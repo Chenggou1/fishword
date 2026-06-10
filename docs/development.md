@@ -69,6 +69,10 @@ cargo uninstall fishword-cli
 - macOS：`~/Library/Application Support/fishword/fishword.db`
 - Linux：`~/.local/share/fishword/fishword.db`
 
+默认情况下，`fishword init` 还会从内置 Qwerty Learner 资产导入 `cet4`、
+`cet6`、`toefl` 三个默认词库。本地开发如果尚未拉取 Git LFS 内容，可以先执行
+`git lfs pull`，或者用 `fishword init --skip-default-decks` 创建空数据库。
+
 ---
 
 ## 开发调试循环

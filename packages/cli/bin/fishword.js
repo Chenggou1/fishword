@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { fishwordPath } from "../index.js";
+import { fishwordEnv, fishwordPath } from "../index.js";
 
 const result = spawnSync(fishwordPath, process.argv.slice(2), {
+  env: fishwordEnv(),
   stdio: "inherit"
 });
 

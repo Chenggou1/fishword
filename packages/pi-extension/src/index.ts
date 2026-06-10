@@ -1,13 +1,15 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { fishwordPath } from "@fishword/cli";
+import { fishwordEnv, fishwordPath } from "@fishword/cli";
 
 const execAsync = promisify(execFile);
 
 async function runFishword(args: string[]): Promise<Record<string, unknown>> {
   try {
-    const { stdout } = await execAsync(fishwordPath, args);
+    const { stdout } = await execAsync(fishwordPath, args, {
+      env: fishwordEnv()
+    });
     return JSON.parse(stdout.trim()) as Record<string, unknown>;
   } catch (err: unknown) {
     // exit code 2 → JSON error was printed to stdout before process.exit(2)

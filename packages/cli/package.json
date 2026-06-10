@@ -7,10 +7,14 @@
   "bin": {
     "fishword": "./bin/fishword.js"
   },
+  "scripts": {
+    "prepack": "node ../../scripts/copy-default-dicts.mjs"
+  },
   "exports": {
     ".": "./index.js"
   },
   "files": [
+    "assets/",
     "bin/",
     "index.js"
   ],

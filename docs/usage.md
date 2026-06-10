@@ -45,15 +45,24 @@ Pi extension 会依赖 `@fishword/cli`，安装扩展时会自动获得 CLI。�
 fishword init
 ```
 
+`fishword init` 会自动导入随 npm CLI 包附带的默认词库，目前包括 `cet4`、
+`cet6` 和 `toefl`。用户不需要额外下载词库，也不需要手动执行导入命令。
+
+如果只想创建空数据库：
+
+```bash
+fishword init --skip-default-decks
+```
+
 默认数据库位置由系统决定。macOS 上通常位于：
 
 ```text
 ~/Library/Application Support/fishword/fishword.db
 ```
 
-## 导入词库
+## 导入额外词库
 
-导入 Qwerty Learner JSON：
+默认词库以外，也可以导入其它 Qwerty Learner JSON：
 
 ```bash
 fishword import qwerty assets/dicts/qwerty-learner/dicts/CET4_T.json --deck cet4 --name "CET-4"

@@ -41,6 +41,32 @@ function platformBinaryPath() {
   }
 }
 
+function defaultDictDir() {
+  const packagedPath = join(packageDir, "assets", "dicts", "qwerty-learner", "dicts");
+  if (existsSync(packagedPath)) {
+    return packagedPath;
+  }
+
+  const devPath = join(repoRoot, "assets", "dicts", "qwerty-learner", "dicts");
+  if (existsSync(devPath)) {
+    return devPath;
+  }
+
+  return undefined;
+}
+
+export function fishwordEnv(env = process.env) {
+  const dictDir = defaultDictDir();
+  if (!dictDir || env.FISHWORD_DEFAULT_DICT_DIR) {
+    return env;
+  }
+
+  return {
+    ...env,
+    FISHWORD_DEFAULT_DICT_DIR: dictDir
+  };
+}
+
 export function resolveFishwordPath() {
   if (process.env.FISHWORD_CLI_PATH) {
     return resolve(process.env.FISHWORD_CLI_PATH);

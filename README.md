@@ -63,7 +63,6 @@ cargo run -p fishword-cli -- rate good --json
 
 ```bash
 HOME=/private/tmp/fishword-dev cargo run -p fishword-cli -- init
-HOME=/private/tmp/fishword-dev cargo run -p fishword-cli -- import qwerty assets/dicts/qwerty-learner/dicts/CET4_T.json --deck cet4 --name "CET-4"
 HOME=/private/tmp/fishword-dev cargo run -p fishword-cli -- current --json
 ```
 
@@ -141,6 +140,10 @@ HOME=/private/tmp/fishword-dev fishword rate good --json
 target/debug/fishword
 ```
 
+并把仓库内的默认词库目录传给 Rust CLI。发布到 npm 时，`@fishword/cli`
+包会内置同一份词库资产。用户安装 CLI 后执行 `fishword init` 就会创建本地
+数据库并自动导入默认词库，不需要再单独下载或手动 import。
+
 所以每次修改 Rust 后，重新执行：
 
 ```bash
@@ -163,7 +166,19 @@ pnpm dev:cli
 
 这些词库按上游 GPL-3.0 许可证再分发。如果分发包含这些词库的 Fishword，请遵守 GPL-3.0，并保留 attribution 和 license notice。
 
-常用导入命令：
+`fishword init` 默认导入以下内置词库：
+
+- `cet4`：CET-4
+- `cet6`：CET-6
+- `toefl`：TOEFL
+
+如果只想创建空数据库，可以执行：
+
+```bash
+fishword init --skip-default-decks
+```
+
+也可以继续手动导入其它词库：
 
 ```bash
 fishword import qwerty assets/dicts/qwerty-learner/dicts/CET4_T.json --deck cet4 --name "CET-4"

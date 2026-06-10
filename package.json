@@ -10,6 +10,7 @@
     "lint:rust": "cargo clippy --all-targets --all-features -- -D warnings",
     "format:check": "cargo fmt --all -- --check",
     "smoke:cli": "node scripts/smoke-cli.mjs",
+    "smoke:release-cli": "node scripts/release-smoke-cli.mjs",
     "check": "pnpm format:check && pnpm lint:rust && pnpm test:rust && pnpm smoke:cli"
   }
 }

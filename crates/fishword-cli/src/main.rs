@@ -5,6 +5,7 @@ use clap::{Parser, Subcommand};
 use fishword_core::{
     card::Rating,
     deck::Deck,
+    default_decks::{find_default_dict_dir, seed_default_decks},
     importer::{
         import_anki_tsv_file, import_csv_file, import_jsonl_file, import_qwerty_file,
         DuplicateStrategy, ImportDeck,
@@ -25,7 +26,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Cmd {
     /// Initialize the database at the platform-default path.
-    Init,
+    Init(InitArgs),
     /// Manage decks.
     Deck {
         #[command(subcommand)]
@@ -47,6 +48,13 @@ enum Cmd {
     Next(CardOutputArgs),
     /// Rate the current card: again, hard, good, easy.
     Rate(RateArgs),
+}
+
+#[derive(Parser)]
+struct InitArgs {
+    /// Create the database without importing bundled default decks.
+    #[arg(long)]
+    skip_default_decks: bool,
 }
 
 #[derive(Subcommand)]
@@ -127,7 +135,7 @@ struct RateArgs {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Cmd::Init => cmd_init(),
+        Cmd::Init(args) => cmd_init(&args),
         Cmd::Deck { sub } => cmd_deck(sub),
         Cmd::Card {
             sub: CardCmd::List { deck },
@@ -144,11 +152,34 @@ fn open_storage() -> Result<Storage> {
     Storage::open(&path).with_context(|| format!("cannot open database at {}", path.display()))
 }
 
-fn cmd_init() -> Result<()> {
+fn cmd_init(args: &InitArgs) -> Result<()> {
     let path = Storage::default_path().context("cannot determine data directory")?;
-    Storage::open(&path)
+    let storage = Storage::open(&path)
         .with_context(|| format!("cannot initialize database at {}", path.display()))?;
     println!("Initialized: {}", path.display());
+    if !args.skip_default_decks {
+        match find_default_dict_dir() {
+            Some(dict_dir) => {
+                let summaries = seed_default_decks(&storage, &dict_dir).with_context(|| {
+                    format!("failed to import default decks from {}", dict_dir.display())
+                })?;
+                for summary in summaries {
+                    println!(
+                        "Default deck={} input={} inserted={} skipped={}",
+                        summary.deck.id,
+                        summary.import.input_count,
+                        summary.import.inserted,
+                        summary.import.skipped
+                    );
+                }
+            }
+            None => {
+                eprintln!(
+                    "Warning: bundled default decks were not found; run with FISHWORD_DEFAULT_DICT_DIR or reinstall the npm package with assets."
+                );
+            }
+        }
+    }
     Ok(())
 }
 

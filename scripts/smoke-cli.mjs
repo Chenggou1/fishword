@@ -36,7 +36,7 @@ function run(args, options = {}) {
 }
 
 try {
-  run(["init"]);
+  run(["init", "--skip-default-decks"]);
   run([
     "import",
     "qwerty",
