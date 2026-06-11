@@ -1,6 +1,6 @@
 {
   "name": "@fishword/cli-darwin-x64",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Fishword CLI binary for macOS x64.",
   "os": [
     "darwin"

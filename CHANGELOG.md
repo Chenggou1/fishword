@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.2](https://github.com/Chenggou1/fishword/compare/fishword-workspace-v0.1.1...fishword-workspace-v0.1.2) (2026-06-11)
+
+
+### Features
+
+* **pi-extension:** add detail overlay with phonetics, examples, and in-panel rating ([1ed3efc](https://github.com/Chenggou1/fishword/commit/1ed3efc190a8d22f7e47fe9342df1aa3c28c94af))
+
+
+### Bug Fixes
+
+* set release-please tag-name to v${version} format ([fb146bf](https://github.com/Chenggou1/fishword/commit/fb146bf9cf129dc932596b6019b45842ad04cab7))
+
 ## [0.1.1](https://github.com/Chenggou1/fishword/compare/fishword-workspace-v0.1.0...fishword-workspace-v0.1.1) (2026-06-11)
 
 
