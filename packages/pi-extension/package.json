@@ -1,6 +1,6 @@
 {
   "name": "@fishword/pi-extension",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pi extension for Fishword.",
   "type": "module",
   "license": "GPL-3.0-only",

@@ -1,11 +1,17 @@
 {
   "name": "@fishword/cli-darwin-arm64",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Fishword CLI binary for macOS arm64.",
-  "os": ["darwin"],
-  "cpu": ["arm64"],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
   "license": "GPL-3.0-only",
-  "files": ["bin/"],
+  "files": [
+    "bin/"
+  ],
   "scripts": {
     "postinstall": "node -e \"try{require('fs').chmodSync(require('path').join(__dirname,'bin/fishword'),0o755)}catch(e){}\""
   }
