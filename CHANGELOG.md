@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.2](https://github.com/Chenggou1/fishword/compare/fishword-workspace-v0.1.1...fishword-workspace-v0.1.2) (2026-06-11)
+
+
+### Features
+
+* **m0:** add pi extension probe for feasibility validation ([8e23003](https://github.com/Chenggou1/fishword/commit/8e2300313a290b441d268ebe6c26d2c22d233230))
+* **m1:** implement core data models, SQLite storage, and CLI ([9fceb95](https://github.com/Chenggou1/fishword/commit/9fceb9543c3d250a898e04175ef340cb053ae37d))
+
+
+### Bug Fixes
+
+* add postinstall chmod for Unix platform binary packages ([2c3e6cd](https://github.com/Chenggou1/fishword/commit/2c3e6cd1256ab3ddd45fac8ae62eef4c517a2323))
+* remove redundant .into_iter() call flagged by clippy ([5f6a45e](https://github.com/Chenggou1/fishword/commit/5f6a45e96cf291843a012439a2bf6eae9eee1139))
+* run prepare-assets before building pi-extension in CI ([d36d43d](https://github.com/Chenggou1/fishword/commit/d36d43d11c85c01775d8a3f9268ea6377962638b))
+* set release-please tag-name to v${version} format ([fb146bf](https://github.com/Chenggou1/fishword/commit/fb146bf9cf129dc932596b6019b45842ad04cab7))
+* use pnpm publish to correctly rewrite workspace:* on release ([4c1d06f](https://github.com/Chenggou1/fishword/commit/4c1d06f93c96adc861caf485bb5a8653b43e8b47))
+
 ## [0.1.1](https://github.com/Chenggou1/fishword/compare/fishword-workspace-v0.1.0...fishword-workspace-v0.1.1) (2026-06-11)
 
 
