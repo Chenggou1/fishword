@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.3](https://github.com/Chenggou1/fishword/compare/v0.1.2...v0.1.3) (2026-06-15)
+
+
+### Features
+
+* add named imports and clean empty tags ([54fb67a](https://github.com/Chenggou1/fishword/commit/54fb67afecfcfc5fe37869b0afbb02382474e3a6))
+
+
+### Bug Fixes
+
+* align release-please tag lookup ([9260816](https://github.com/Chenggou1/fishword/commit/92608163c49734ce0ff15355f6c04de0e0b8efe6))
+* make imports atomic ([486a488](https://github.com/Chenggou1/fishword/commit/486a488b02ebfba9d1d4f312dfc08d588acc3cbb))
+* move tag-name to root level so release-please generates v${version} tags ([c379384](https://github.com/Chenggou1/fishword/commit/c37938437ddd89aa4aa6784426b44c35592a9239))
+
 ## [0.1.2](https://github.com/Chenggou1/fishword/compare/v0.1.1...v0.1.2) (2026-06-11)
 
 
