@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.4](https://github.com/Chenggou1/fishword/compare/v0.1.3...v0.1.4) (2026-06-16)
+
+
+### Features
+
+* add Fishword boss key ([2f52703](https://github.com/Chenggou1/fishword/commit/2f52703607603d5b286e358bff4c1bcf7e8469da)), closes [#9](https://github.com/Chenggou1/fishword/issues/9) [#10](https://github.com/Chenggou1/fishword/issues/10)
+* show shortcuts in slash commands ([c854c58](https://github.com/Chenggou1/fishword/commit/c854c58f6e91a172369154b7369b2103bcd18888))
+
+
+### Bug Fixes
+
+* launch pi from dev script ([628d5d6](https://github.com/Chenggou1/fishword/commit/628d5d6c7ec36ddeab359234e420e6d3761db99f))
+* publish releases from release-please ([adac375](https://github.com/Chenggou1/fishword/commit/adac3757b34f6e2785190206ac4e02a89ee9fe6a))
+* update Cargo.lock in release-please config ([ef1b121](https://github.com/Chenggou1/fishword/commit/ef1b1212b9d5307040b613f71676628e8ba05b17))
+
 ## [0.1.3](https://github.com/Chenggou1/fishword/compare/v0.1.2...v0.1.3) (2026-06-15)
 
 
