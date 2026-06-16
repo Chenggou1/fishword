@@ -1,6 +1,6 @@
 {
   "name": "@fishword/cli-linux-arm64",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Fishword CLI binary for Linux arm64.",
   "os": [
     "linux"

@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.2.0](https://github.com/Chenggou1/fishword/compare/v0.1.4...v0.2.0) (2026-06-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* fishword import qwerty/csv/anki-tsv subcommands removed. fishword import jsonl is now the only supported import format. Use scripts/convert-qwerty-decks.mjs (or the online catalog) to convert other sources to fishword.deck.v1 JSONL before importing.
+
+### Features
+
+* add catalog command and deck distribution ([a094da7](https://github.com/Chenggou1/fishword/commit/a094da7c867f35bf6f0a3db9c0fb80923401ce05))
+* add source column to catalog list output ([478561e](https://github.com/Chenggou1/fishword/commit/478561e53149b85003f52a4903ad359b001842e9))
+* drop qwerty/csv/anki-tsv import support, keep jsonl only ([db0d493](https://github.com/Chenggou1/fishword/commit/db0d493acc7a7f3eb86bbc0ce024fddaaa50b94c))
+* tag catalog-sourced decks with catalog_id to prevent name-collision merges ([4eed3e9](https://github.com/Chenggou1/fishword/commit/4eed3e998d88e0d4aad2e0f40f716e94b522f59c))
+
+
+### Bug Fixes
+
+* apply rustfmt formatting ([27c77fc](https://github.com/Chenggou1/fishword/commit/27c77fcd1a669c4c6cbda61b57237d802acfb3f8))
+* enable git lfs in catalog workflows ([f410720](https://github.com/Chenggou1/fishword/commit/f4107205d4dd42962b2565ed8e6056c460ed0f2a))
+* pin card overlay position ([d1421ac](https://github.com/Chenggou1/fishword/commit/d1421ac04ef38037db6aa643179f53dce19f3266))
+* remove duplicate cet4/cet6/toefl qwerty decks already covered by kajweb ([3bef839](https://github.com/Chenggou1/fishword/commit/3bef8393d61bcb0e3e5b251ed01c312910b40c30))
+* resolve clippy print_literal warning ([439bb6f](https://github.com/Chenggou1/fishword/commit/439bb6f5b38162d28b2c56cfb56deaf96ffd8bc5))
+* support boss key in focused overlays ([9839a36](https://github.com/Chenggou1/fishword/commit/9839a36372fd67122fe5a37fa2fc5300fa246a7d))
+* use correct kajweb source path in convert script ([f376b7d](https://github.com/Chenggou1/fishword/commit/f376b7d3d5ca0866631040797e7f633eb06dc16e))
+* wrap multi-write deck/review operations in transactions ([d341b63](https://github.com/Chenggou1/fishword/commit/d341b639a5e8edb91d031465c233e8426064ead5))
+
 ## [0.1.4](https://github.com/Chenggou1/fishword/compare/v0.1.3...v0.1.4) (2026-06-16)
 
 
