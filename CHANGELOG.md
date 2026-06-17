@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.2.1](https://github.com/Chenggou1/fishword/compare/v0.2.0...v0.2.1) (2026-06-17)
+
+
+### Features
+
+* add /fw-manage deck management overlay ([1ad1661](https://github.com/Chenggou1/fishword/commit/1ad16610c77f8be43079be820199572c380b8df0))
+* add GitHub Pages site and replace screenshots with GIFs ([4dc2c7a](https://github.com/Chenggou1/fishword/commit/4dc2c7a43dc0accc8c0afbb50e7828f401863e1e))
+* use catalog for default Pi decks ([751555a](https://github.com/Chenggou1/fishword/commit/751555ac8ddfc00885efcabf9eb503a461331661))
+
+
+### Bug Fixes
+
+* keep manager overlay during boss restore ([80407d6](https://github.com/Chenggou1/fishword/commit/80407d624566bf30bc0771ff3cbd528999345db6))
+* preserve catalog deck descriptions ([f4bf36e](https://github.com/Chenggou1/fishword/commit/f4bf36e9b5b092492ad011500178b50594f5186b))
+* show default deck loading state ([d5ef2d8](https://github.com/Chenggou1/fishword/commit/d5ef2d8a3b443a72047b6e6ef947dd9225e2a24a))
+* surface catalog load errors ([afc66b9](https://github.com/Chenggou1/fishword/commit/afc66b9b3057f25056c90ebf55cbd002e63ab376))
+
 ## [0.2.0](https://github.com/Chenggou1/fishword/compare/v0.1.4...v0.2.0) (2026-06-16)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "@fishword/cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "JavaScript wrapper for the Fishword Rust CLI.",
   "type": "module",
   "license": "GPL-3.0-only",
