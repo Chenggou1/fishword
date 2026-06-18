@@ -307,7 +307,7 @@ checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
 name = "fishword-cli"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -320,7 +320,7 @@ dependencies = [
 
 [[package]]
 name = "fishword-core"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "chrono",
  "dirs",

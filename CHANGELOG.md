@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.2](https://github.com/Chenggou1/fishword/compare/v0.2.1...v0.2.2) (2026-06-18)
+
+
+### Bug Fixes
+
+* dedupe catalog deck terms ([e010dc1](https://github.com/Chenggou1/fishword/commit/e010dc11e5dc01e1614529b2035c298ae6d304f6))
+* remove stray importer fixture from fishword-cli ([ef54b89](https://github.com/Chenggou1/fishword/commit/ef54b893c22d871499aa6c178058079d53f75835))
+* render json clap errors ([882cb55](https://github.com/Chenggou1/fishword/commit/882cb55a361d05803b921d49c3f50d18d5901ce5))
+* render json cli errors consistently ([dafabd6](https://github.com/Chenggou1/fishword/commit/dafabd64c73736783142a4b390adf80673e9aa11))
+
 ## [0.2.1](https://github.com/Chenggou1/fishword/compare/v0.2.0...v0.2.1) (2026-06-17)
 
 
