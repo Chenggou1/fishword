@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { KeyId, OverlayHandle } from "@earendil-works/pi-tui";
+import type { OverlayHandle } from "@earendil-works/pi-tui";
 import { seedDefaultDecks } from "./defaultDecks.ts";
 import { getErrorCode, isErrorResponse, parseCardResponse, runFishword } from "./fishword.ts";
 import { showCardOverlay, showDoneOverlay } from "./overlays/card.ts";
@@ -7,18 +7,16 @@ import { showCardDetailOverlay } from "./overlays/cardDetail.ts";
 import { showDeckManagerOverlay } from "./overlays/deckManager.ts";
 import { showStatsOverlay } from "./overlays/stats.ts";
 import { OverlayManager } from "./overlayManager.ts";
+import { attachPrefixShortcut } from "./prefixShortcut.ts";
 import type { CardResponse, DeckItem, Rating, StatsResponse, StatusResponse } from "./types.ts";
 import { RATINGS } from "./types.ts";
 import { formatStatusLine, formatStatusLineMessage } from "./ui/statusLine.ts";
 
-const HIDE_OR_SUMMON_KEY: KeyId = "ctrl+shift+f";
-const CARD_DETAIL_KEY: KeyId = "ctrl+shift+i";
+const SHORTCUT_MIGRATION_ISSUE = "https://github.com/Chenggou1/fishword/issues/19";
 
 type FishwordAction = {
   command: string;
   description: string;
-  shortcut?: KeyId;
-  shortcutDescription?: string;
   handler: (ctx: ExtensionContext) => Promise<void> | void;
 };
 
@@ -30,22 +28,12 @@ type OverlayState =
   | { kind: "stats"; handle: OverlayHandle }
   | { kind: "deck-manager"; handle: OverlayHandle };
 
-function formatShortcutLabel(key: string): string {
-  return key
-    .split("+")
-    .map((part) => (part.length === 1 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1)))
-    .join("+");
-}
-
-function commandDescription(description: string, shortcut?: string): string {
-  return shortcut ? `${description} (${formatShortcutLabel(shortcut)})` : description;
-}
-
 export default function (pi: ExtensionAPI) {
   const overlayManager = new OverlayManager();
   let overlay: OverlayState = { kind: "none" };
   let isFishwordHidden = false;
   let lastStatusLine: string | undefined;
+  let detachPrefixShortcut: (() => void) | undefined;
 
   function setFishwordStatus(ctx: ExtensionContext, text: string | undefined): void {
     lastStatusLine = text;
@@ -199,8 +187,6 @@ export default function (pi: ExtensionAPI) {
     showStatsOverlay(ctx, {
       status: statusRes as StatusResponse,
       stats: statsRes as StatsResponse,
-      visibilityShortcut: HIDE_OR_SUMMON_KEY,
-      onToggleVisibility: () => toggleFishwordVisibility(ctx),
       onHandle: (handle) => {
         overlay = { kind: "stats", handle };
         overlayManager.register(handle, isFishwordHidden);
@@ -222,8 +208,6 @@ export default function (pi: ExtensionAPI) {
     teardown();
 
     showDeckManagerOverlay(ctx, {
-      visibilityShortcut: HIDE_OR_SUMMON_KEY,
-      onToggleVisibility: () => toggleFishwordVisibility(ctx),
       onHandle: (handle) => {
         overlay = { kind: "deck-manager", handle };
         overlayManager.register(handle, isFishwordHidden);
@@ -250,8 +234,6 @@ export default function (pi: ExtensionAPI) {
 
     showCardDetailOverlay(ctx, {
       response,
-      visibilityShortcut: HIDE_OR_SUMMON_KEY,
-      onToggleVisibility: () => toggleFishwordVisibility(ctx),
       onHandle: (handle) => {
         overlay = { kind: "card-detail", handle, response };
         overlayManager.register(handle, isFishwordHidden);
@@ -308,44 +290,72 @@ export default function (pi: ExtensionAPI) {
     {
       command: "fw",
       description: "Hide or summon review UI",
-      shortcut: HIDE_OR_SUMMON_KEY,
       handler: toggleFishwordVisibility,
     },
-    ...RATINGS.map(({ rating, key }): FishwordAction => ({
+    ...RATINGS.map((rating): FishwordAction => ({
       command: `fw-${rating}`,
       description: `Rate ${rating} → next card`,
-      shortcut: key,
       handler: (ctx) => rateAndAdvance(ctx, rating),
     })),
     {
       command: "fw-detail",
       description: "Show detailed card info (phonetics, meanings, examples)",
-      shortcut: CARD_DETAIL_KEY,
-      shortcutDescription: "Show detailed card info",
       handler: openCardDetail,
     },
   ];
 
-  pi.on("session_start", async (_event, ctx) => {
+  const fishwordActionByCommand = new Map(fishwordActions.map((action) => [action.command, action]));
+
+  function registerPrefixShortcut(ctx: ExtensionContext): void {
+    detachPrefixShortcut?.();
+    detachPrefixShortcut = undefined;
+    if (ctx.mode !== "tui") return;
+
+    detachPrefixShortcut = attachPrefixShortcut(
+      ctx.ui,
+      (command) => {
+        const action = fishwordActionByCommand.get(command);
+        if (!action) return;
+        void (async () => {
+          try {
+            await action.handler(ctx);
+          } catch {
+            ctx.ui.notify("Fishword 快捷键执行失败", "error");
+          }
+        })();
+      },
+      { isFishwordHidden: () => isFishwordHidden },
+    );
+  }
+
+  pi.on("session_start", async (event, ctx) => {
+    registerPrefixShortcut(ctx);
+    if (event.reason === "startup" && ctx.hasUI) {
+      ctx.ui.notify(
+        [
+          "Fishword 快捷键已更新",
+          "先按并松开 Ctrl+Q：F 隐藏/唤起 · I 详情 · A/H/G/E 评分",
+          "原 Ctrl+Shift 系列快捷键已移除。",
+          `详情：${SHORTCUT_MIGRATION_ISSUE}`,
+        ].join("\n"),
+        "warning",
+      );
+    }
     await seedDefaultDecks(ctx);
     await refreshDisplay(ctx);
   });
 
+  pi.on("session_shutdown", () => {
+    detachPrefixShortcut?.();
+    detachPrefixShortcut = undefined;
+  });
+
   for (const action of fishwordActions) {
     pi.registerCommand(action.command, {
-      description: commandDescription(action.description, action.shortcut),
+      description: action.description,
       handler: async (_args, ctx) => {
         await action.handler(ctx);
       },
     });
-
-    if (action.shortcut) {
-      pi.registerShortcut(action.shortcut, {
-        description: action.shortcutDescription ?? action.description,
-        handler: async (ctx) => {
-          await action.handler(ctx);
-        },
-      });
-    }
   }
 }

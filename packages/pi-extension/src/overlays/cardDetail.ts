@@ -2,7 +2,6 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { OverlayHandle } from "@earendil-works/pi-tui";
 import { Key, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
 import type { CardResponse, Rating } from "../types.ts";
-import { RATINGS } from "../types.ts";
 import { fitCell } from "../ui/text.ts";
 import { handleVisibilityShortcut, type VisibilityShortcutOptions } from "./visibilityShortcut.ts";
 
@@ -101,9 +100,6 @@ export function showCardDetailOverlay(ctx: ExtensionContext, options: CardDetail
           if (k === "h") { done("hard"); return; }
           if (k === "g") { done("good"); return; }
           if (k === "e") { done("easy"); return; }
-          for (const { rating, key } of RATINGS) {
-            if (matchesKey(keyData, key)) { done(rating); return; }
-          }
         }
       },
     }),

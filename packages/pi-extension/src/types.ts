@@ -1,5 +1,3 @@
-import type { KeyId } from "@earendil-works/pi-tui";
-
 export type Card = {
   id: string;
   term: string;
@@ -59,12 +57,7 @@ export type StatsResponse = {
   series: DailyStats[];
 };
 
-export const RATINGS: { rating: Rating; key: KeyId }[] = [
-  { rating: "again", key: "ctrl+shift+a" },
-  { rating: "hard", key: "ctrl+shift+h" },
-  { rating: "good", key: "ctrl+shift+g" },
-  { rating: "easy", key: "ctrl+shift+e" },
-];
+export const RATINGS: Rating[] = ["again", "hard", "good", "easy"];
 
 export type CatalogDeckEntry = {
   id: string;
