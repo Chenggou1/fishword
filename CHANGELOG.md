@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.3.1](https://github.com/Chenggou1/fishword/compare/v0.2.2...v0.3.1) (2026-08-02)
+
+
+### Features
+
+* add programmer catalog decks ([a3a73eb](https://github.com/Chenggou1/fishword/commit/a3a73ebe2542b9866598a2c7e243e0272e931791))
+* import custom decks from Pi ([2810239](https://github.com/Chenggou1/fishword/commit/28102399e6329757eef8642e45be37ce998a75e5))
+* replace card overlay with study widget ([5906f9f](https://github.com/Chenggou1/fishword/commit/5906f9f90a4db511936afc9c5d3934d811de9d7e))
+
+
+### Bug Fixes
+
+* centralize CLI output handling ([739baca](https://github.com/Chenggou1/fishword/commit/739baca6022b03da8c7d09523e10917730d72f85))
+* keep card overlay visible in long sessions ([ab1eca8](https://github.com/Chenggou1/fishword/commit/ab1eca8cbe86a2209c1139bbfdc23035b77db6f6))
+* merge long-session overlay visibility ([1ec02f9](https://github.com/Chenggou1/fishword/commit/1ec02f9c2f7cde2744683619e0fa173da6d16e8a))
+* use portable prefix shortcuts ([0a5fc71](https://github.com/Chenggou1/fishword/commit/0a5fc712f10d216a250d449a9fb4e69af6b09c8e)), closes [#19](https://github.com/Chenggou1/fishword/issues/19)
+
+
+### Miscellaneous Chores
+
+* release 0.3.1 ([ebcc5fc](https://github.com/Chenggou1/fishword/commit/ebcc5fc30b15b63829e327486c75f1b6b3721ce3))
+
 ## [0.2.2](https://github.com/Chenggou1/fishword/compare/v0.2.1...v0.2.2) (2026-06-18)
 
 
