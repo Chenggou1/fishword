@@ -104,9 +104,9 @@ describe("Fishword prefix shortcut", () => {
     expect(onPendingChange.mock.calls).toEqual([[true], [false]]);
   });
 
-  it("attaches to Pi terminal input and displays the available action keys", () => {
+  it("attaches to Pi terminal input and reports pending state to the UI owner", () => {
     let terminalHandler: ((data: string) => unknown) | undefined;
-    const setStatus = vi.fn();
+    const onPendingChange = vi.fn();
     const unsubscribe = vi.fn();
     const onAction = vi.fn();
     const ui = {
@@ -114,42 +114,15 @@ describe("Fishword prefix shortcut", () => {
         terminalHandler = handler;
         return unsubscribe;
       },
-      setStatus,
     };
 
-    const detach = attachPrefixShortcut(ui, onAction);
+    const detach = attachPrefixShortcut(ui, onAction, { onPendingChange });
     terminalHandler?.("\x11");
     terminalHandler?.("f");
     detach();
 
-    expect(setStatus).toHaveBeenNthCalledWith(
-      1,
-      "fishword-shortcuts",
-      "Fishword Ctrl+Q：F 隐藏 · I 详情 · A/H/G/E 评分",
-    );
-    expect(setStatus).toHaveBeenLastCalledWith("fishword-shortcuts", undefined);
+    expect(onPendingChange.mock.calls).toEqual([[true], [false]]);
     expect(onAction).toHaveBeenCalledWith("fw");
     expect(unsubscribe).toHaveBeenCalledOnce();
-  });
-
-  it("keeps the prefix hint hidden after Boss Key while allowing summon", () => {
-    let terminalHandler: ((data: string) => unknown) | undefined;
-    const setStatus = vi.fn();
-    const onAction = vi.fn();
-    const ui = {
-      onTerminalInput(handler: (data: string) => unknown) {
-        terminalHandler = handler;
-        return vi.fn();
-      },
-      setStatus,
-    };
-
-    attachPrefixShortcut(ui, onAction, { isFishwordHidden: () => true });
-    terminalHandler?.("\x11");
-
-    expect(setStatus).not.toHaveBeenCalled();
-
-    terminalHandler?.("f");
-    expect(onAction).toHaveBeenCalledWith("fw");
   });
 });

@@ -2,7 +2,6 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import type { OverlayHandle } from "@earendil-works/pi-tui";
 import { seedDefaultDecks } from "./defaultDecks.ts";
 import { getErrorCode, isErrorResponse, parseCardResponse, runFishword } from "./fishword.ts";
-import { showCardOverlay, showDoneOverlay } from "./overlays/card.ts";
 import { showCardDetailOverlay } from "./overlays/cardDetail.ts";
 import { showDeckManagerOverlay } from "./overlays/deckManager.ts";
 import { showStatsOverlay } from "./overlays/stats.ts";
@@ -11,6 +10,7 @@ import { attachPrefixShortcut } from "./prefixShortcut.ts";
 import type { CardResponse, DeckItem, Rating, StatsResponse, StatusResponse } from "./types.ts";
 import { RATINGS } from "./types.ts";
 import { formatStatusLine, formatStatusLineMessage } from "./ui/statusLine.ts";
+import { clearReviewWidget, showCardWidget, showDoneWidget } from "./widgets/card.ts";
 
 const SHORTCUT_MIGRATION_ISSUE = "https://github.com/Chenggou1/fishword/issues/19";
 
@@ -22,16 +22,23 @@ type FishwordAction = {
 
 type OverlayState =
   | { kind: "none" }
-  | { kind: "card"; handle: OverlayHandle; response: CardResponse }
-  | { kind: "done"; handle: OverlayHandle; timer: ReturnType<typeof setInterval> }
   | { kind: "card-detail"; handle: OverlayHandle; response: CardResponse | null }
   | { kind: "stats"; handle: OverlayHandle }
   | { kind: "deck-manager"; handle: OverlayHandle };
 
+type ReviewState =
+  | { kind: "none" }
+  | { kind: "card"; response: CardResponse }
+  | { kind: "done" };
+
 export default function (pi: ExtensionAPI) {
   const overlayManager = new OverlayManager();
   let overlay: OverlayState = { kind: "none" };
+  let review: ReviewState = { kind: "none" };
+  let doneRefreshTimer: ReturnType<typeof setInterval> | null = null;
   let isFishwordHidden = false;
+  let isPrefixShortcutPending = false;
+  let shouldAnimateShortcutIntroduction = true;
   let lastStatusLine: string | undefined;
   let detachPrefixShortcut: (() => void) | undefined;
 
@@ -43,15 +50,50 @@ export default function (pi: ExtensionAPI) {
   function applyFishwordHidden(ctx: ExtensionContext): void {
     overlayManager.setAllHidden(isFishwordHidden);
     ctx.ui.setStatus("fishword", isFishwordHidden ? undefined : lastStatusLine);
+    if (isFishwordHidden) clearReviewWidget(ctx);
+  }
+
+  function renderReview(ctx: ExtensionContext): void {
+    if (isFishwordHidden || overlayManager.hasAny()) {
+      clearReviewWidget(ctx);
+      return;
+    }
+    const animateIntroduction = !isPrefixShortcutPending && shouldAnimateShortcutIntroduction;
+    if (review.kind === "card") {
+      showCardWidget(ctx, review.response, isPrefixShortcutPending, animateIntroduction);
+      if (animateIntroduction) shouldAnimateShortcutIntroduction = false;
+    } else if (review.kind === "done") {
+      showDoneWidget(ctx, isPrefixShortcutPending, animateIntroduction);
+      if (animateIntroduction) shouldAnimateShortcutIntroduction = false;
+    } else {
+      clearReviewWidget(ctx);
+    }
   }
 
   async function toggleFishwordVisibility(ctx: ExtensionContext): Promise<void> {
     isFishwordHidden = !isFishwordHidden;
     applyFishwordHidden(ctx);
 
-    if (!isFishwordHidden && !overlayManager.hasAny()) {
-      await refreshDisplay(ctx);
+    if (isFishwordHidden) {
+      ctx.ui.notify(
+        "小声 bb：Fishword 已经藏好啦。想继续时，你可以先按并松开 Ctrl+Q，再按 F。",
+        "info",
+      );
+    } else if (!overlayManager.hasAny()) {
+      if (review.kind === "none") await refreshDisplay(ctx);
+      else renderReview(ctx);
     }
+  }
+
+  function stopDoneRefreshTimer(): void {
+    if (doneRefreshTimer) clearInterval(doneRefreshTimer);
+    doneRefreshTimer = null;
+  }
+
+  function clearReview(ctx: ExtensionContext): void {
+    stopDoneRefreshTimer();
+    review = { kind: "none" };
+    clearReviewWidget(ctx);
   }
 
   /**
@@ -62,22 +104,23 @@ export default function (pi: ExtensionAPI) {
     if (overlay.kind === "none") return;
     overlayManager.unregister(overlay.handle);
     if (hide) overlay.handle.hide();
-    if (overlay.kind === "done") clearInterval(overlay.timer);
     overlay = { kind: "none" };
   }
 
   function showCurrentCard(ctx: ExtensionContext, cardResponse: Record<string, unknown>): void {
     teardown();
+    stopDoneRefreshTimer();
     const parsed = parseCardResponse(cardResponse);
-    showCardOverlay(ctx, parsed, (handle) => {
-      overlay = { kind: "card", handle, response: parsed };
-      overlayManager.register(handle, isFishwordHidden);
-    });
+    review = { kind: "card", response: parsed };
+    renderReview(ctx);
   }
 
   function showDone(ctx: ExtensionContext): void {
     teardown();
-    const timer = setInterval(() => {
+    stopDoneRefreshTimer();
+    review = { kind: "done" };
+    renderReview(ctx);
+    doneRefreshTimer = setInterval(() => {
       void (async () => {
         const status = await refreshStatusLine(ctx);
         if (status && status.mode !== "complete") {
@@ -85,10 +128,6 @@ export default function (pi: ExtensionAPI) {
         }
       })();
     }, 60_000);
-    showDoneOverlay(ctx, (handle) => {
-      overlay = { kind: "done", handle, timer };
-      overlayManager.register(handle, isFishwordHidden);
-    });
   }
 
   async function refreshStatusLine(ctx: ExtensionContext): Promise<StatusResponse | null> {
@@ -127,21 +166,25 @@ export default function (pi: ExtensionAPI) {
       const res = await runFishword(["current", "--json"]);
       if (isErrorResponse(res)) {
         teardown();
+        clearReview(ctx);
       } else {
         showCurrentCard(ctx, res);
       }
     } catch {
       teardown();
+      clearReview(ctx);
     }
   }
 
   async function rateAndAdvance(ctx: ExtensionContext, rating: Rating): Promise<void> {
     if (isFishwordHidden) return;
-    if (overlay.kind === "done") return;
+    if (overlay.kind !== "none") return;
+    if (review.kind === "done") return;
     try {
       const res = await runFishword(["rate", rating, "--json"]);
       if (isErrorResponse(res)) {
         teardown();
+        clearReview(ctx);
         await refreshStatusLine(ctx);
       } else {
         const latestStatus = await refreshStatusLine(ctx);
@@ -152,10 +195,12 @@ export default function (pi: ExtensionAPI) {
           showDone(ctx);
         } else {
           teardown();
+          clearReview(ctx);
         }
       }
     } catch {
       teardown();
+      clearReview(ctx);
       setFishwordStatus(ctx, formatStatusLineMessage("unavailable"));
     }
   }
@@ -184,6 +229,7 @@ export default function (pi: ExtensionAPI) {
     }
 
     teardown();
+    clearReviewWidget(ctx);
     showStatsOverlay(ctx, {
       status: statusRes as StatusResponse,
       stats: statsRes as StatsResponse,
@@ -206,6 +252,7 @@ export default function (pi: ExtensionAPI) {
 
   function openDeckManager(ctx: ExtensionContext): void {
     teardown();
+    clearReviewWidget(ctx);
 
     showDeckManagerOverlay(ctx, {
       onHandle: (handle) => {
@@ -226,11 +273,12 @@ export default function (pi: ExtensionAPI) {
     const response =
       responseOverride !== undefined
         ? responseOverride
-        : overlay.kind === "card"
-          ? overlay.response
+        : review.kind === "card"
+          ? review.response
           : null;
 
     teardown();
+    clearReviewWidget(ctx);
 
     showCardDetailOverlay(ctx, {
       response,
@@ -239,14 +287,9 @@ export default function (pi: ExtensionAPI) {
         overlayManager.register(handle, isFishwordHidden);
       },
       onClose: () => {
-        // UI dismissed — only unregister, then restore card overlay if we have a response.
+        // UI dismissed — only unregister, then restore the current review state.
         teardown(false);
-        if (response) {
-          showCardOverlay(ctx, response, (handle) => {
-            overlay = { kind: "card", handle, response: response };
-            overlayManager.register(handle, isFishwordHidden);
-          });
-        }
+        renderReview(ctx);
       },
       onRate: (rating) => {
         void rateInDetail(ctx, rating);
@@ -264,12 +307,20 @@ export default function (pi: ExtensionAPI) {
       const res = await runFishword(["rate", rating, "--json"]);
       if (isErrorResponse(res)) {
         await refreshStatusLine(ctx);
+        clearReview(ctx);
         openCardDetail(ctx, null);
         return;
       }
-      await refreshStatusLine(ctx);
+      const latestStatus = await refreshStatusLine(ctx);
       const next = res["next"] as Record<string, unknown> | null;
       const nextResponse = next ? parseCardResponse(next) : null;
+      if (nextResponse) {
+        review = { kind: "card", response: nextResponse };
+      } else if (latestStatus?.mode === "complete") {
+        showDone(ctx);
+      } else {
+        clearReview(ctx);
+      }
       openCardDetail(ctx, nextResponse);
     } catch {
       setFishwordStatus(ctx, formatStatusLineMessage("unavailable"));
@@ -324,7 +375,12 @@ export default function (pi: ExtensionAPI) {
           }
         })();
       },
-      { isFishwordHidden: () => isFishwordHidden },
+      {
+        onPendingChange(pending) {
+          isPrefixShortcutPending = pending;
+          renderReview(ctx);
+        },
+      },
     );
   }
 

@@ -21,7 +21,6 @@ type TerminalInputResult = { consume?: boolean; data?: string } | undefined;
 
 type PrefixShortcutUI = {
   onTerminalInput(handler: (data: string) => TerminalInputResult): () => void;
-  setStatus(key: string, text: string | undefined): void;
 };
 
 export type PrefixShortcut = {
@@ -74,23 +73,16 @@ export function createPrefixShortcut(options: {
 export function attachPrefixShortcut(
   ui: PrefixShortcutUI,
   onAction: (action: PrefixShortcutAction) => void,
-  options: { isFishwordHidden?: () => boolean } = {},
+  options: { onPendingChange?: (pending: boolean) => void } = {},
 ): () => void {
   const shortcut = createPrefixShortcut({
     onAction,
-    onPendingChange(pending) {
-      if (pending && options.isFishwordHidden?.()) return;
-      ui.setStatus(
-        "fishword-shortcuts",
-        pending ? "Fishword Ctrl+Q：F 隐藏 · I 详情 · A/H/G/E 评分" : undefined,
-      );
-    },
+    onPendingChange: options.onPendingChange,
   });
   const unsubscribe = ui.onTerminalInput(shortcut.handleInput);
 
   return () => {
     unsubscribe();
     shortcut.dispose();
-    ui.setStatus("fishword-shortcuts", undefined);
   };
 }
