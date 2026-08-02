@@ -1,5 +1,5 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type { OverlayHandle, OverlayOptions, TUI } from "@earendil-works/pi-tui";
+import type { OverlayHandle, OverlayOptions } from "@earendil-works/pi-tui";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import type { CardResponse, SelectionReason } from "../types.ts";
 import { formatMeaning, formatPhonetic } from "../ui/text.ts";
@@ -18,52 +18,14 @@ const DONE_MESSAGES = [
   "老板看不见你的努力，但单词记住了。",
 ];
 const DONE_MESSAGE_CYCLE_MS = 5 * 60 * 1_000;
-const CARD_OVERLAY_PREFERRED_ROW = 16;
-const CARD_OVERLAY_RIGHT_MARGIN = 2;
-
-type OverlayLayout = {
-  row: number;
-  visible: boolean;
-};
-
-function topAnchoredOverlayLayout(
-  tui: TUI,
-  overlayHeight: number,
-  termWidth = tui.terminal.columns,
-  termHeight = tui.terminal.rows,
-): OverlayLayout {
-  const baseHeight = tui.render(termWidth).length;
-  const viewportTop = Math.max(0, baseHeight - termHeight);
-  const preferredViewportRow = CARD_OVERLAY_PREFERRED_ROW - viewportTop;
-  const maxRow = termHeight - overlayHeight;
-  const visible = preferredViewportRow >= 0 && maxRow >= 0;
-  const row = Math.max(0, Math.min(preferredViewportRow, maxRow));
-  return { row, visible };
-}
 
 function createCardOverlayOptions(width: number): OverlayOptions {
   return {
-    anchor: "top-right",
+    anchor: "bottom-right",
     width,
-    row: CARD_OVERLAY_PREFERRED_ROW,
-    margin: { right: CARD_OVERLAY_RIGHT_MARGIN },
+    margin: { right: 2, bottom: 7 },
     nonCapturing: true,
   };
-}
-
-function updateCardOverlayRow(
-  tui: TUI,
-  options: OverlayOptions,
-  overlayHeight: number,
-): OverlayLayout {
-  const layout = topAnchoredOverlayLayout(tui, overlayHeight);
-  options.row = layout.row;
-  return layout;
-}
-
-function hideCardOverlayWhenPastTop(tui: TUI, options: OverlayOptions, overlayHeight: number): void {
-  options.visible = (termWidth, termHeight) =>
-    topAnchoredOverlayLayout(tui, overlayHeight, termWidth, termHeight).visible;
 }
 
 export function showDoneOverlay(
@@ -83,8 +45,6 @@ export function showDoneOverlay(
 
   void ctx.ui.custom(
     (tui, theme) => {
-      const overlayHeight = 3;
-      hideCardOverlayWhenPastTop(tui, overlayOptions, overlayHeight);
       requestRender = () => tui.requestRender();
       return {
         render(_width: number) {
@@ -105,7 +65,6 @@ export function showDoneOverlay(
             " " +
             theme.fg("border", "│");
           const contentLines = [row(theme.fg("dim", message))];
-          updateCardOverlayRow(tui, overlayOptions, overlayHeight);
           const lines = [topBorder, ...contentLines, leftPad + theme.fg("border", `╰${"─".repeat(innerW)}╯`)];
           return lines;
         },
@@ -150,14 +109,10 @@ export function showCardOverlay(
   const overlayOptions = createCardOverlayOptions(overlayWidth);
 
   void ctx.ui.custom(
-    (tui, theme) => {
-      const overlayHeight = 4;
-      hideCardOverlayWhenPastTop(tui, overlayOptions, overlayHeight);
-
+    (_tui, theme) => {
       return {
         render(width: number) {
           const innerW = width - 2;
-          updateCardOverlayRow(tui, overlayOptions, overlayHeight);
           const l1 = theme.fg("accent", term) + (phonetic ? "  " + theme.fg("dim", phonetic) : "");
           const leftDashes = Math.max(0, innerW - visibleWidth(title) - 2);
           const topBorder =
