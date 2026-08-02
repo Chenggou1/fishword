@@ -24,6 +24,13 @@ pub fn cmd_import(command: ImportCmd) -> Result<()> {
     let target = ImportTarget::from_args(&args)?;
     let cards = import_jsonl_file(&args.path)
         .with_context(|| format!("failed to parse {}", args.path.display()))?;
+    if cards.is_empty() {
+        return Err(cmd_error(
+            args.json,
+            "empty_import_file",
+            "No importable cards found in the JSONL file",
+        ));
+    }
     persist_import(target, cards, &args.duplicates, args.json)
 }
 

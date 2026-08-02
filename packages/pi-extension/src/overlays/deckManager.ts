@@ -21,13 +21,16 @@ export type DeckManagerOptions = VisibilityShortcutOptions & {
   onHandle: (handle: OverlayHandle) => void;
   onClose: () => void;
   onDeckChanged: () => void;
+  onImportRequested: () => void;
 };
+
+type DeckManagerResult = "import" | undefined;
 
 const OVERLAY_WIDTH = 72;
 const MAX_LIST_ROWS = 8;
 
 export function showDeckManagerOverlay(ctx: ExtensionContext, options: DeckManagerOptions): void {
-  const { onClose, onDeckChanged, onHandle } = options;
+  const { onClose, onDeckChanged, onHandle, onImportRequested } = options;
 
   let activeTab: Tab = "my-decks";
   let catalogState: CatalogState = { kind: "loading" };
@@ -172,7 +175,7 @@ export function showDeckManagerOverlay(ctx: ExtensionContext, options: DeckManag
     }
 
     if (decks.length === 0) {
-      return [theme.fg("dim", " 暂无词库，请先从 Catalog tab 下载")];
+      return [theme.fg("dim", " 暂无词库：按 i 导入自建词库，或从词库目录下载")];
     }
 
     const start = decks.length <= MAX_LIST_ROWS
@@ -233,7 +236,7 @@ export function showDeckManagerOverlay(ctx: ExtensionContext, options: DeckManag
       const inConfirm = st.kind === "ready" && st.confirmDelete !== null;
       hint = inConfirm
         ? "y 确认    n/Esc 取消"
-        : "Enter 激活词库    d 删除    ←→ 切换    Esc 关闭";
+        : "Enter 激活    i 导入自建词库    d 删除    ←→ 切换    Esc 关闭";
     }
     return statusMsg
       ? theme.fg("accent", truncateToWidth(" " + statusMsg, iw, "...", true))
@@ -307,7 +310,7 @@ export function showDeckManagerOverlay(ctx: ExtensionContext, options: DeckManag
     }
   }
 
-  void ctx.ui.custom(
+  void ctx.ui.custom<DeckManagerResult>(
     (tui, theme, _kb, done) => {
       requestRender = () => tui.requestRender();
 
@@ -408,6 +411,8 @@ export function showDeckManagerOverlay(ctx: ExtensionContext, options: DeckManag
               requestRender?.();
             } else if (matchesKey(keyData, Key.enter)) {
               void handleMyDecksEnter();
+            } else if (keyData.toLowerCase() === "i") {
+              done("import");
             } else if (keyData.toLowerCase() === "d") {
               const deck = myDecksState.decks[myDecksState.selectedIndex];
               if (deck) {
@@ -428,8 +433,9 @@ export function showDeckManagerOverlay(ctx: ExtensionContext, options: DeckManag
       },
       onHandle,
     },
-  ).then(() => {
+  ).then((result) => {
     if (statusTimer) clearTimeout(statusTimer);
-    onClose();
+    if (result === "import") onImportRequested();
+    else onClose();
   });
 }

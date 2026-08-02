@@ -25,7 +25,7 @@ pi install npm:@fishword/pi-extension
 | `Ctrl+Q A` | 评分：again（没记住） |
 | `Ctrl+Q E` | 评分：easy（轻松） |
 
-按下 `Ctrl+Q` 后，状态栏会显示可用操作键；1.5 秒内没有继续输入会自动取消。评分快捷键在词卡视图和详情面板内均有效。详情面板内还额外支持 `G` / `H` / `A` / `E` 单键评分。
+按下 `Ctrl+Q` 后，学习栏左侧会显示可用操作键；1.5 秒内没有继续输入会自动取消。评分快捷键在词卡视图和详情面板内均有效。详情面板内还额外支持 `G` / `H` / `A` / `E` 单键评分。
 
 ## Slash 命令
 
@@ -34,11 +34,13 @@ pi install npm:@fishword/pi-extension
 | `/fw` | 隐藏或唤起 Fishword UI |
 | `/fw-detail` | 打开当前单词的详情面板 |
 | `/fw-stats` | 查看今日进度和 7 日学习趋势 |
-| `/fw-manage` | 词库管理：下载远程词库、切换或删除本地词库 |
+| `/fw-manage` | 词库管理：导入自建词库、下载、切换或删除词库 |
 | `/fw-good` | 评分：good（记住了） |
 | `/fw-hard` | 评分：hard（有点难） |
 | `/fw-again` | 评分：again（没记住） |
 | `/fw-easy` | 评分：easy（轻松） |
+
+在 `/fw-manage` 的“我的词库”页按 `i`，可以选择本地 `fishword.deck.v1` JSONL 文件并创建词库。导入完成后会自动切换到新词库。格式参考：[示例词库](https://github.com/Chenggou1/fishword/blob/main/examples/custom-deck.jsonl)。
 
 ## 许可证
 

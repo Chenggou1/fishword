@@ -1,5 +1,8 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { OverlayHandle } from "@earendil-works/pi-tui";
+import { PathInputOverlay, type PathInputOverlayResult } from "./components/pathInputOverlay.ts";
+import { TextInputOverlay } from "./components/textInputOverlay.ts";
+import { importAndActivateCustomDeck, suggestDeckName } from "./customDeckImport.ts";
 import { seedDefaultDecks } from "./defaultDecks.ts";
 import { getErrorCode, isErrorResponse, parseCardResponse, runFishword } from "./fishword.ts";
 import { showCardDetailOverlay } from "./overlays/cardDetail.ts";
@@ -24,7 +27,8 @@ type OverlayState =
   | { kind: "none" }
   | { kind: "card-detail"; handle: OverlayHandle; response: CardResponse | null }
   | { kind: "stats"; handle: OverlayHandle }
-  | { kind: "deck-manager"; handle: OverlayHandle };
+  | { kind: "deck-manager"; handle: OverlayHandle }
+  | { kind: "deck-import"; handle: OverlayHandle };
 
 type ReviewState =
   | { kind: "none" }
@@ -266,7 +270,106 @@ export default function (pi: ExtensionAPI) {
       onDeckChanged: () => {
         void refreshStatusLine(ctx);
       },
+      onImportRequested: () => {
+        teardown(false);
+        void openCustomDeckImport(ctx);
+      },
     });
+  }
+
+  async function chooseCustomDeckFile(
+    ctx: ExtensionContext,
+    initialPath?: string,
+  ): Promise<string | undefined> {
+    clearReviewWidget(ctx);
+    const result = await ctx.ui.custom<PathInputOverlayResult>(
+      (tui, theme, _kb, done) =>
+        new PathInputOverlay(
+          theme,
+          tui,
+          done,
+          {
+            title: "导入自建词库 · 1/2",
+            label: "路径",
+            emptyMessage: "没有匹配的目录或 JSONL 文件",
+            footer: "Tab 补全 · ↑↓ 选择 · Enter 下一步 · Esc 取消",
+            directoryLabel: "目录",
+            fileLabel: "JSONL",
+            fileExtensions: [".jsonl"],
+            suggestionLimit: 6,
+          },
+          initialPath ? { path: initialPath, selectedIndex: 0 } : undefined,
+        ),
+      {
+        overlay: true,
+        overlayOptions: { anchor: "center", width: 72, margin: 1 },
+        onHandle: (handle) => {
+          overlay = { kind: "deck-import", handle };
+          overlayManager.register(handle, isFishwordHidden);
+        },
+      },
+    );
+    teardown(false);
+    return result;
+  }
+
+  async function confirmCustomDeckName(
+    ctx: ExtensionContext,
+    path: string,
+  ): Promise<string | undefined> {
+    const result = await ctx.ui.custom<string | undefined>(
+      (tui, theme, _kb, done) =>
+        new TextInputOverlay(theme, tui, done, {
+          title: "导入自建词库 · 2/2",
+          label: "名称",
+          initialValue: suggestDeckName(path),
+          emptyMessage: "词库名称不能为空",
+          footer: "Enter 导入并切换 · Esc 返回选文件",
+          body: (bodyTheme) => [
+            bodyTheme.fg("dim", `文件  ${path}`),
+            bodyTheme.fg("dim", "格式  fishword.deck.v1 JSONL"),
+          ],
+        }),
+      {
+        overlay: true,
+        overlayOptions: { anchor: "center", width: 72, margin: 1 },
+        onHandle: (handle) => {
+          overlay = { kind: "deck-import", handle };
+          overlayManager.register(handle, isFishwordHidden);
+        },
+      },
+    );
+    teardown(false);
+    return result;
+  }
+
+  async function openCustomDeckImport(ctx: ExtensionContext, initialPath?: string): Promise<void> {
+    let pathToRestore = initialPath;
+    while (true) {
+      const path = await chooseCustomDeckFile(ctx, pathToRestore);
+      if (!path) {
+        openDeckManager(ctx);
+        return;
+      }
+
+      const name = await confirmCustomDeckName(ctx, path);
+      if (!name) {
+        pathToRestore = path;
+        continue;
+      }
+
+      ctx.ui.notify(`正在导入词库“${name}”...`, "info");
+      const result = await importAndActivateCustomDeck(path, name);
+      if (!result.ok) {
+        ctx.ui.notify(result.message, "error");
+        openDeckManager(ctx);
+        return;
+      }
+
+      ctx.ui.notify(`已导入并切换到“${result.deck}”，共 ${result.imported} 个单词`, "info");
+      await refreshDisplay(ctx);
+      return;
+    }
   }
 
   function openCardDetail(ctx: ExtensionContext, responseOverride?: CardResponse | null): void {
@@ -330,7 +433,7 @@ export default function (pi: ExtensionAPI) {
   const fishwordActions: FishwordAction[] = [
     {
       command: "fw-manage",
-      description: "Manage decks — browse catalog or delete local decks",
+      description: "Manage decks — import, browse catalog, switch, or delete",
       handler: openDeckManager,
     },
     {

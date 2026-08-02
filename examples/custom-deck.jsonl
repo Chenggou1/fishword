@@ -1,0 +1,2 @@
+{"term":"workspace","language":"en","meanings":[{"lang":"zh-CN","text":"工作区","example":"Open the project in a clean workspace."}],"pronunciation":{"us":"ˈwɜːrkˌspeɪs"},"tags":["custom"],"source":{"name":"my-custom-deck"}}
+{"term":"rollback","language":"en","meanings":[{"lang":"zh-CN","text":"回滚","example":"Rollback the deployment if the checks fail."}],"tags":["custom"],"source":{"name":"my-custom-deck"}}

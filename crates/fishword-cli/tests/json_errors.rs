@@ -117,6 +117,29 @@ fn invalid_duplicate_strategy_with_json_returns_protocol_error() {
 }
 
 #[test]
+fn empty_import_file_with_json_returns_protocol_error() {
+    let home = temp_home("json-empty-import");
+    let jsonl = home.join("empty.jsonl");
+    fs::write(&jsonl, "\n").unwrap();
+
+    assert_json_error(
+        fishword(
+            &home,
+            &[
+                "import",
+                "jsonl",
+                jsonl.to_str().unwrap(),
+                "--create-deck",
+                "Empty",
+                "--json",
+            ],
+        ),
+        "empty_import_file",
+        "No importable cards found in the JSONL file",
+    );
+}
+
+#[test]
 fn deck_not_found_with_json_returns_protocol_error() {
     let home = temp_home("json-deck-not-found");
 
