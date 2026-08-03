@@ -84,6 +84,18 @@ pi install npm:@fishword/pi-extension
 
 导入自建词库时，先选择本地 `.jsonl` 文件，再确认词库名称。导入成功后会自动切换到新词库。首期支持 `fishword.deck.v1` JSONL 格式，可以复制并修改[示例词库](examples/custom-deck.jsonl)。
 
+### 导入 Anki 词库（.apkg，CLI）
+
+除了 JSONL，还能直接导入 Anki 社区流传的 `.apkg` 词库包，自动识别单词/音标/释义/例句：
+
+```bash
+fishword import apkg 我的词库.apkg --create-deck 托福   # 建库并导入
+fishword import apkg 我的词库.apkg --inspect            # 先看字段识别结果（不导入）
+```
+
+字段识别不准时用 `--map` 覆盖。完整用法、`--map` 各参数含义与示例见
+**[Anki 词库导入指南](docs/apkg-guide.md)**。
+
 ## Dictionaries
 
 每个词库都有**独立的 FSRS 调度状态**——CET-4 的复习进度不会影响 CET-6，反之亦然。你可以同时维护多个词库，在不同学习目标之间自由切换，算法会分别记住你对每个词的掌握程度。

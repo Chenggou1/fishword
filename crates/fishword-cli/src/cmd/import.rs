@@ -4,13 +4,19 @@ use anyhow::{Context, Result};
 use fishword_core::{
     deck::Deck,
     error::Error as CoreError,
-    importer::{import_jsonl_file, DuplicateStrategy},
+    importer::{
+        apkg::{
+            import_apkg_file, inspect_apkg_file, ApkgError, ApkgImportOptions, ApkgInspectReport,
+            FieldMap, NotetypeInspection,
+        },
+        import_jsonl_file, DuplicateStrategy,
+    },
 };
 
 use crate::protocol::{ImportResponse, IMPORT_SCHEMA};
 
 use crate::{
-    args::{ImportArgs, ImportCmd},
+    args::{ApkgImportArgs, ImportArgs, ImportCmd},
     util::{cmd_error, open_storage, print_human, print_json},
 };
 
@@ -19,9 +25,26 @@ enum ImportTarget {
     CreateDeck(String),
 }
 
+impl ImportTarget {
+    /// 从 `--deck-id` / `--create-deck` 解析导入目标。两者必须传且仅传一个。
+    fn resolve(deck_id: Option<i64>, create_deck: Option<&str>) -> Result<Self> {
+        match (deck_id, create_deck) {
+            (Some(deck_id), None) => Ok(Self::ExistingDeck(deck_id)),
+            (None, Some(name)) => Ok(Self::CreateDeck(name.to_string())),
+            _ => anyhow::bail!("pass exactly one of --deck-id or --create-deck"),
+        }
+    }
+}
+
 pub fn cmd_import(command: ImportCmd) -> Result<()> {
-    let ImportCmd::Jsonl(args) = command;
-    let target = ImportTarget::from_args(&args)?;
+    match command {
+        ImportCmd::Jsonl(args) => cmd_import_jsonl(args),
+        ImportCmd::Apkg(args) => cmd_import_apkg(args),
+    }
+}
+
+fn cmd_import_jsonl(args: ImportArgs) -> Result<()> {
+    let target = ImportTarget::resolve(args.deck_id, args.create_deck.as_deref())?;
     let cards = import_jsonl_file(&args.path)
         .with_context(|| format!("failed to parse {}", args.path.display()))?;
     if cards.is_empty() {
@@ -34,14 +57,42 @@ pub fn cmd_import(command: ImportCmd) -> Result<()> {
     persist_import(target, cards, &args.duplicates, args.json)
 }
 
-impl ImportTarget {
-    fn from_args(args: &ImportArgs) -> Result<Self> {
-        match (args.deck_id, args.create_deck.as_deref()) {
-            (Some(deck_id), None) => Ok(Self::ExistingDeck(deck_id)),
-            (None, Some(name)) => Ok(Self::CreateDeck(name.to_string())),
-            _ => anyhow::bail!("pass exactly one of --deck-id or --create-deck"),
-        }
+fn cmd_import_apkg(args: ApkgImportArgs) -> Result<()> {
+    let field_map = FieldMap::parse(&args.map).map_err(|e| apkg_error_to_cmd(args.json, e))?;
+    let options = ApkgImportOptions {
+        language: args.language.clone(),
+        field_map,
+    };
+
+    if args.inspect {
+        // inspect 是纯文本诊断工具，全程忽略 --json（与成功路径一致）。
+        let report =
+            inspect_apkg_file(&args.path, &options).map_err(|e| apkg_error_to_cmd(false, e))?;
+        print_human(render_inspect_report(&args.path, &report));
+        return Ok(());
     }
+
+    let target = ImportTarget::resolve(args.deck_id, args.create_deck.as_deref())?;
+    let cards =
+        import_apkg_file(&args.path, &options).map_err(|e| apkg_error_to_cmd(args.json, e))?;
+    // import_apkg_file 在无可导入卡时返回 NoCards，不会返回空 Vec。
+    persist_import(target, cards, &args.duplicates, args.json)
+}
+
+/// 把 [`ApkgError`] 映射成稳定的协议错误码 + 人类可读消息。
+fn apkg_error_to_cmd(json: bool, error: ApkgError) -> anyhow::Error {
+    let code = match &error {
+        ApkgError::InvalidZip(_) => "apkg_invalid_zip",
+        ApkgError::MissingCollection => "apkg_missing_collection",
+        ApkgError::ZstdDecode(_) => "apkg_zstd_decode",
+        ApkgError::InvalidDatabase(_) => "apkg_invalid_database",
+        ApkgError::EmptyCollection => "apkg_empty_collection",
+        ApkgError::NoCards => "apkg_no_cards",
+        ApkgError::NoTerm => "apkg_no_term",
+        ApkgError::InvalidMap(_) => "apkg_invalid_map",
+        ApkgError::FieldNotFound(_) => "apkg_field_not_found",
+    };
+    cmd_error(json, code, &error.to_string())
 }
 
 fn persist_import(
@@ -132,5 +183,58 @@ fn import_into_new_deck(
             ),
         )),
         Err(e) => Err(anyhow::anyhow!(e)).context("failed to write imported cards"),
+    }
+}
+
+/// 渲染 apkg 字段映射检查报告为人类可读文本（经 `print_human` 输出，遵守输出契约）。
+/// 每个 notetype 一节，列出字段→角色+置信度+样本。
+fn render_inspect_report(path: &std::path::Path, report: &ApkgInspectReport) -> String {
+    use std::fmt::Write;
+    let mut out = String::new();
+    let _ = writeln!(
+        out,
+        "Anki package: {} ({} notes, {} notetype{})",
+        path.display(),
+        report.note_count,
+        report.notetypes.len(),
+        if report.notetypes.len() == 1 { "" } else { "s" }
+    );
+    for notetype in &report.notetypes {
+        out.push('\n');
+        render_notetype(&mut out, notetype);
+    }
+    out.push('\n');
+    out.push_str("Run without --inspect to import, or pass --map role=selector to override.");
+    out
+}
+
+fn render_notetype(out: &mut String, notetype: &NotetypeInspection) {
+    use std::fmt::Write;
+    let _ = writeln!(
+        out,
+        "Notetype \"{}\" ({} notes):",
+        notetype.name, notetype.note_count
+    );
+    let _ = writeln!(
+        out,
+        "  {:>4}  {:<16} {:<12} {:>6}  samples",
+        "ord", "field", "role", "conf"
+    );
+    for field in &notetype.fields {
+        let confidence = format!("{:.0}%", field.confidence * 100.0);
+        let samples = if field.samples.is_empty() {
+            "(empty)".to_string()
+        } else {
+            field.samples.join(" · ")
+        };
+        let _ = writeln!(
+            out,
+            "  {:>4}  {:<16} {:<12} {:>6}  {}",
+            field.ord,
+            field.name,
+            field.role.as_str(),
+            confidence,
+            samples
+        );
     }
 }

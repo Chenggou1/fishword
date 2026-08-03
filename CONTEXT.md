@@ -10,7 +10,7 @@ Fishword is a local vocabulary learning tool centered on a Rust CLI. The CLI is 
 
 Supported capabilities:
 - SQLite-backed decks, cards, card state, settings, and review logs
-- Importing `fishword.deck.v1` JSONL (the only supported runtime import format)
+- Importing `fishword.deck.v1` JSONL and Anki `.apkg` packages — both parse to the shared `ImportCard` IR before storage
 - FSRS-based review scheduling per deck
 - Deck-scoped card selection via `current`; `rate` records a review and returns the next card
 - Stable JSON protocol output for frontend integrations
@@ -34,7 +34,9 @@ Supported capabilities:
 
 **JSON protocol** — the stable machine-readable CLI contract consumed by frontend integrations. A protocol response must not be mixed with human-readable output.
 
-**deck.v1 JSONL** — the only supported runtime import format. Other sources (e.g. kajweb, Qwerty Learner) are converted to this format offline via scripts before import.
+**deck.v1 JSONL** — the canonical runtime import format. Other sources (e.g. kajweb, Qwerty Learner) are converted to this format offline via scripts before import.
+
+**`.apkg`** — Anki package, a second runtime import format. The parser unzips the package, opens the embedded anki2/anki21/anki21b SQLite, and maps each field to a role (term/phonetic/definition/example/pos/ignore) from content features + field position — **field names are unreliable** (a TOEFL deck's `pos` field actually stores IPA). Multiple Anki decks merge into one local deck (Anki deck name → tag). SM-2 scheduling is not migrated; imported cards start fresh (per ADR-0003). See `docs/apkg-import.md`.
 
 ## Core crates
 
@@ -45,7 +47,7 @@ Contains all domain logic. Keep it free of CLI concerns.
 - `card` — card, meaning, pronunciation, review state, rating, and source models
 - `deck` — deck model
 - `storage` — SQLite persistence, migrations, settings, current-card state, review logs
-- `importer` — deck.v1 JSONL importer
+- `importer` — `deck.v1` JSONL importer + Anki `.apkg` importer (`apkg/` submodule); both emit `ImportCard` IR consumed by storage
 - `scheduler` — FSRS review scheduling
 - `selector` — deck-scoped card selection policy
 - `error` — shared core error and result types

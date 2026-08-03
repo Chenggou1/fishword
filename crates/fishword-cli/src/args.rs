@@ -104,6 +104,8 @@ pub enum CardCmd {
 pub enum ImportCmd {
     /// Import fishword.deck.v1 JSONL.
     Jsonl(ImportArgs),
+    /// Import an Anki `.apkg` package (maps note fields to fishword cards via content features).
+    Apkg(ApkgImportArgs),
 }
 
 #[derive(Parser)]
@@ -125,6 +127,42 @@ pub struct ImportArgs {
     /// Duplicate strategy: merge, skip, overwrite, keep.
     #[arg(long, default_value = "merge")]
     pub duplicates: String,
+    /// Emit stable JSON protocol output.
+    #[arg(long)]
+    pub json: bool,
+}
+
+/// `import apkg` 参数。target 组非必需（`--inspect` 模式不需要指定 deck），由 handler 校验。
+#[derive(Parser)]
+#[command(group(
+    ArgGroup::new("target")
+        .args(["deck_id", "create_deck"])
+        .required(false)
+        .multiple(false)
+))]
+pub struct ApkgImportArgs {
+    /// Input `.apkg` file path.
+    pub path: PathBuf,
+    /// Local deck id (numeric, from `deck list`). Use this to import into an existing deck.
+    #[arg(long)]
+    pub deck_id: Option<i64>,
+    /// Create a new local deck with this name and import into it.
+    #[arg(long)]
+    pub create_deck: Option<String>,
+    /// Duplicate strategy: merge, skip, overwrite, keep.
+    #[arg(long, default_value = "merge")]
+    pub duplicates: String,
+    /// Override auto-detected field mapping. Format: `role=selector`, where role is
+    /// term/phonetic/definition/example/pos/ignore and selector is a field index (0) or
+    /// field name (Word). Repeatable; partial overrides allowed.
+    #[arg(long)]
+    pub map: Vec<String>,
+    /// Print the detected field mapping for each notetype without importing.
+    #[arg(long)]
+    pub inspect: bool,
+    /// Language code written into imported cards (default: en).
+    #[arg(long, default_value = "en")]
+    pub language: String,
     /// Emit stable JSON protocol output.
     #[arg(long)]
     pub json: bool,
@@ -259,6 +297,7 @@ impl ImportCmd {
     fn wants_json(&self) -> bool {
         match self {
             Self::Jsonl(args) => args.json,
+            Self::Apkg(args) => args.json,
         }
     }
 }
