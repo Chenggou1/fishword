@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/Chenggou1/fishword/compare/v0.3.1...v0.3.2) (2026-08-04)
+
+
+### Bug Fixes
+
+* wrap long card detail text ([704e914](https://github.com/Chenggou1/fishword/commit/704e9143a5d0058bad27bcc447d8f05a8d41758d)), closes [#23](https://github.com/Chenggou1/fishword/issues/23)
+
 ## [0.3.1](https://github.com/Chenggou1/fishword/compare/v0.2.2...v0.3.1) (2026-08-02)
 
 
