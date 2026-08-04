@@ -1,6 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { OverlayHandle } from "@earendil-works/pi-tui";
-import { Key, matchesKey, visibleWidth } from "@earendil-works/pi-tui";
+import { Key, matchesKey, visibleWidth, wrapTextWithAnsi } from "@earendil-works/pi-tui";
 import type { CardResponse, Rating } from "../types.ts";
 import { fitCell } from "../ui/text.ts";
 import { handleVisibilityShortcut, type VisibilityShortcutOptions } from "./visibilityShortcut.ts";
@@ -37,6 +37,19 @@ export function showCardDetailOverlay(ctx: ExtensionContext, options: CardDetail
         const iw = w - 2;
         const row = (content: string) =>
           theme.fg("border", "│") + fitCell(content, iw) + theme.fg("border", "│");
+        const wrappedRows = (
+          content: string,
+          firstPrefix = "",
+          continuationPrefix = firstPrefix,
+        ) => {
+          const contentWidth = Math.max(
+            1,
+            iw - Math.max(visibleWidth(firstPrefix), visibleWidth(continuationPrefix)),
+          );
+          return wrapTextWithAnsi(content, contentWidth).map((line, index) =>
+            row((index === 0 ? firstPrefix : continuationPrefix) + line),
+          );
+        };
         const separator = theme.fg("border", "├" + "─".repeat(iw) + "┤");
         const title = " DETAIL ";
         const leftDashes = Math.max(0, iw - visibleWidth(title) - 2);
@@ -54,10 +67,10 @@ export function showCardDetailOverlay(ctx: ExtensionContext, options: CardDetail
           lines.push(separator);
           lines.push(row(theme.fg("dim", "Esc 关闭")));
         } else {
-          lines.push(row(theme.fg("accent", card.term)));
+          lines.push(...wrappedRows(theme.fg("accent", card.term)));
           const phonetics = formatBothPhonetics(card);
           if (phonetics) {
-            lines.push(row(theme.fg("dim", phonetics)));
+            lines.push(...wrappedRows(theme.fg("dim", phonetics)));
           }
           lines.push(separator);
           if (card.meanings.length === 0) {
@@ -65,14 +78,14 @@ export function showCardDetailOverlay(ctx: ExtensionContext, options: CardDetail
           } else {
             for (const m of card.meanings) {
               if (typeof m === "string") {
-                lines.push(row(m));
+                lines.push(...wrappedRows(m));
               } else {
                 const pos = m.part_of_speech
                   ? theme.fg("accent", m.part_of_speech.padEnd(4)) + " "
                   : "     ";
-                lines.push(row(pos + m.definition));
+                lines.push(...wrappedRows(m.definition, pos, " ".repeat(visibleWidth(pos))));
                 if (m.example) {
-                  lines.push(row("     " + theme.fg("dim", m.example)));
+                  lines.push(...wrappedRows(theme.fg("dim", m.example), "     "));
                 }
               }
             }
