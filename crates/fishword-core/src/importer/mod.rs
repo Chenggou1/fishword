@@ -7,6 +7,8 @@ use crate::{
     error::{Error, Result},
 };
 
+pub mod apkg;
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum DuplicateStrategy {
     #[default]

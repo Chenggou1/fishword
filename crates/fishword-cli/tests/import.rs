@@ -211,6 +211,162 @@ fn import_with_create_deck_rejects_existing_deck() {
     ));
 }
 
+fn apkg_fixture() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("fixtures")
+        .join("sample.apkg")
+}
+
+#[test]
+fn import_apkg_creates_deck_and_imports_cards() {
+    let home = temp_home("import-apkg-create");
+    let apkg = apkg_fixture();
+
+    assert_success(fishword(&home, &["init"]));
+    let output = assert_success(fishword(
+        &home,
+        &[
+            "import",
+            "apkg",
+            apkg.to_str().unwrap(),
+            "--create-deck",
+            "FromApkg",
+            "--json",
+        ],
+    ));
+    let response: serde_json::Value = serde_json::from_str(&output).unwrap();
+    assert_eq!(response["schema"], "fishword.protocol.import.v1");
+    assert_eq!(response["deck"], "FromApkg");
+    assert_eq!(response["input"], 1);
+    assert_eq!(response["inserted"], 1);
+
+    let cards = assert_success(fishword(&home, &["card", "list", "--deck", "1", "--json"]));
+    let cards: serde_json::Value = serde_json::from_str(&cards).unwrap();
+    assert_eq!(cards["cards"][0]["term"], "cancel");
+    assert_eq!(cards["cards"][0]["meanings"][0]["definition"], "取消");
+    // Anki deck name 进 tag。
+    assert!(cards["cards"][0]["tags"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t.as_str() == Some("TestDeck")));
+}
+
+#[test]
+fn import_apkg_inspect_prints_mapping_without_importing() {
+    let home = temp_home("import-apkg-inspect");
+    let apkg = apkg_fixture();
+
+    assert_success(fishword(&home, &["init"]));
+    let output = assert_success(fishword(
+        &home,
+        &["import", "apkg", apkg.to_str().unwrap(), "--inspect"],
+    ));
+    let text = output;
+    assert!(text.contains("term"));
+    assert!(text.contains("definition"));
+    assert!(text.contains("cancel"));
+
+    // inspect 不应创建任何 deck。
+    let decks = assert_success(fishword(&home, &["deck", "list"]));
+    assert!(!decks.contains("FromApkg"));
+}
+
+#[test]
+fn import_apkg_map_override_changes_term_field() {
+    let home = temp_home("import-apkg-map");
+    let apkg = apkg_fixture();
+
+    assert_success(fishword(&home, &["init"]));
+    // 强制把字段 1（Back，内容"取消"）当 term，字段 0（Front，内容"cancel"）当 definition。
+    let output = assert_success(fishword(
+        &home,
+        &[
+            "import",
+            "apkg",
+            apkg.to_str().unwrap(),
+            "--create-deck",
+            "Mapped",
+            "--map",
+            "term=1",
+            "--map",
+            "definition=Front",
+            "--json",
+        ],
+    ));
+    let response: serde_json::Value = serde_json::from_str(&output).unwrap();
+    assert_eq!(response["inserted"], 1);
+
+    let cards = assert_success(fishword(&home, &["card", "list", "--deck", "1", "--json"]));
+    let cards: serde_json::Value = serde_json::from_str(&cards).unwrap();
+    assert_eq!(cards["cards"][0]["term"], "取消");
+    assert_eq!(cards["cards"][0]["meanings"][0]["definition"], "cancel");
+}
+
+#[test]
+fn import_apkg_invalid_zip_reports_protocol_error() {
+    let home = temp_home("import-apkg-badzip");
+    let bad = home.join("bad.apkg");
+    fs::write(&bad, "not a zip file").unwrap();
+
+    assert_success(fishword(&home, &["init"]));
+    let output = fishword(
+        &home,
+        &[
+            "import",
+            "apkg",
+            bad.to_str().unwrap(),
+            "--create-deck",
+            "X",
+            "--json",
+        ],
+    );
+    assert!(
+        !output.status.success(),
+        "expected non-zero exit\nstdout:\n{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let response: serde_json::Value =
+        serde_json::from_str(&String::from_utf8_lossy(&output.stdout))
+            .expect("should emit JSON error envelope");
+    assert_eq!(response["error"]["code"], "apkg_invalid_zip");
+}
+
+#[test]
+fn import_apkg_requires_target_unless_inspect() {
+    let home = temp_home("import-apkg-no-target");
+    let apkg = apkg_fixture();
+
+    assert_success(fishword(&home, &["init"]));
+    // 没有 --deck-id / --create-deck（也不是 inspect）→ 应失败。
+    assert_failure(fishword(&home, &["import", "apkg", apkg.to_str().unwrap()]));
+}
+
+#[test]
+fn import_apkg_invalid_map_reports_protocol_error() {
+    let home = temp_home("import-apkg-badmap");
+    let apkg = apkg_fixture();
+
+    assert_success(fishword(&home, &["init"]));
+    let output = fishword(
+        &home,
+        &[
+            "import",
+            "apkg",
+            apkg.to_str().unwrap(),
+            "--create-deck",
+            "X",
+            "--map",
+            "bogus",
+            "--json",
+        ],
+    );
+    assert!(std::str::from_utf8(&output.stdout)
+        .unwrap()
+        .contains("apkg_invalid_map"));
+    assert!(!output.status.success());
+}
+
 #[test]
 fn import_catalog_fetch_preserves_manifest_description() {
     let home = temp_home("import-catalog-description");
