@@ -3,6 +3,7 @@ import { isKeyRelease, matchesKey } from "@earendil-works/pi-tui";
 export type PrefixShortcutAction =
   | "fw"
   | "fw-detail"
+  | "fw-pronounce"
   | "fw-again"
   | "fw-hard"
   | "fw-good"
@@ -11,6 +12,7 @@ export type PrefixShortcutAction =
 const PREFIX_ACTIONS = [
   { key: "f", action: "fw" },
   { key: "i", action: "fw-detail" },
+  { key: "p", action: "fw-pronounce" },
   { key: "a", action: "fw-again" },
   { key: "h", action: "fw-hard" },
   { key: "g", action: "fw-good" },

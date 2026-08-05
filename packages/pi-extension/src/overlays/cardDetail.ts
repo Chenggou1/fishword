@@ -13,6 +13,7 @@ export type CardDetailOptions = VisibilityShortcutOptions & {
   onHandle: (handle: OverlayHandle) => void;
   onClose: () => void;
   onRate: (rating: Rating) => void;
+  onPronounce: () => void;
 };
 
 function formatBothPhonetics(card: CardResponse["card"]): string {
@@ -26,7 +27,7 @@ function formatBothPhonetics(card: CardResponse["card"]): string {
 }
 
 export function showCardDetailOverlay(ctx: ExtensionContext, options: CardDetailOptions): void {
-  const { response, onHandle, onClose, onRate } = options;
+  const { response, onHandle, onClose, onRate, onPronounce } = options;
   const card = response?.card ?? null;
   let overlayHandle: OverlayHandle | null = null;
 
@@ -92,7 +93,7 @@ export function showCardDetailOverlay(ctx: ExtensionContext, options: CardDetail
           }
           lines.push(separator);
           lines.push(
-            row(theme.fg("dim", "[A]gain  [H]ard  [G]ood  [E]asy    Esc 关闭")),
+            row(theme.fg("dim", "[P]朗读  [A]gain  [H]ard  [G]ood  [E]asy  Esc 关闭")),
           );
         }
 
@@ -109,6 +110,7 @@ export function showCardDetailOverlay(ctx: ExtensionContext, options: CardDetail
         }
         if (card) {
           const k = keyData.toLowerCase();
+          if (k === "p") { onPronounce(); return; }
           if (k === "a") { done("again"); return; }
           if (k === "h") { done("hard"); return; }
           if (k === "g") { done("good"); return; }
