@@ -22,6 +22,10 @@ Supported capabilities:
 
 **Card** — a vocabulary item belonging to exactly one deck. Has its own FSRS state (`card_state` row).
 
+**Card language** — the BCP 47 language tag for a card's term (for example `en`, `ja-JP`, or `ko-KR`). Integrations use it for language-sensitive behavior such as pronunciation playback.
+
+**Pronunciation playback** — audible rendering of a card's term in its card language. Playback is presentational and never changes review history or FSRS state.
+
 **Review** — a single rating event (`again | hard | good | easy`) that advances a card's FSRS state and updates the current-card pointer within its deck. Only `rate` triggers a review; `current` and `status` are read-only.
 
 **Current card** — the card a user is actively studying, scoped to a deck. Stored as `current_card_id` in the `settings` table.

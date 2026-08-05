@@ -10,6 +10,7 @@ import { showDeckManagerOverlay } from "./overlays/deckManager.ts";
 import { showStatsOverlay } from "./overlays/stats.ts";
 import { OverlayManager } from "./overlayManager.ts";
 import { attachPrefixShortcut } from "./prefixShortcut.ts";
+import { createSystemSpeechPlayer } from "./speech.ts";
 import type { CardResponse, DeckItem, Rating, StatsResponse, StatusResponse } from "./types.ts";
 import { RATINGS } from "./types.ts";
 import { formatStatusLine, formatStatusLineMessage } from "./ui/statusLine.ts";
@@ -37,6 +38,7 @@ type ReviewState =
 
 export default function (pi: ExtensionAPI) {
   const overlayManager = new OverlayManager();
+  const speech = createSystemSpeechPlayer();
   let overlay: OverlayState = { kind: "none" };
   let review: ReviewState = { kind: "none" };
   let doneRefreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -54,7 +56,10 @@ export default function (pi: ExtensionAPI) {
   function applyFishwordHidden(ctx: ExtensionContext): void {
     overlayManager.setAllHidden(isFishwordHidden);
     ctx.ui.setStatus("fishword", isFishwordHidden ? undefined : lastStatusLine);
-    if (isFishwordHidden) clearReviewWidget(ctx);
+    if (isFishwordHidden) {
+      speech.stop();
+      clearReviewWidget(ctx);
+    }
   }
 
   function renderReview(ctx: ExtensionContext): void {
@@ -95,6 +100,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   function clearReview(ctx: ExtensionContext): void {
+    speech.stop();
     stopDoneRefreshTimer();
     review = { kind: "none" };
     clearReviewWidget(ctx);
@@ -112,6 +118,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   function showCurrentCard(ctx: ExtensionContext, cardResponse: Record<string, unknown>): void {
+    speech.stop();
     teardown();
     stopDoneRefreshTimer();
     const parsed = parseCardResponse(cardResponse);
@@ -120,6 +127,7 @@ export default function (pi: ExtensionAPI) {
   }
 
   function showDone(ctx: ExtensionContext): void {
+    speech.stop();
     teardown();
     stopDoneRefreshTimer();
     review = { kind: "done" };
@@ -184,6 +192,7 @@ export default function (pi: ExtensionAPI) {
     if (isFishwordHidden) return;
     if (overlay.kind !== "none") return;
     if (review.kind === "done") return;
+    speech.stop();
     try {
       const res = await runFishword(["rate", rating, "--json"]);
       if (isErrorResponse(res)) {
@@ -268,6 +277,7 @@ export default function (pi: ExtensionAPI) {
         void refreshDisplay(ctx);
       },
       onDeckChanged: () => {
+        speech.stop();
         void refreshStatusLine(ctx);
       },
       onImportRequested: () => {
@@ -397,12 +407,16 @@ export default function (pi: ExtensionAPI) {
       onRate: (rating) => {
         void rateInDetail(ctx, rating);
       },
+      onPronounce: () => {
+        void pronounceCurrentCard(ctx);
+      },
     });
   }
 
   async function rateInDetail(ctx: ExtensionContext, rating: Rating): Promise<void> {
     if (isFishwordHidden) return;
     if (overlay.kind !== "card-detail") return;
+    speech.stop();
     // onRate fires after the detail overlay's Promise resolves (UI already dismissed).
     // teardown(false) unregisters the handle without calling hide() again.
     teardown(false);
@@ -427,6 +441,29 @@ export default function (pi: ExtensionAPI) {
       openCardDetail(ctx, nextResponse);
     } catch {
       setFishwordStatus(ctx, formatStatusLineMessage("unavailable"));
+    }
+  }
+
+  async function pronounceCurrentCard(ctx: ExtensionContext): Promise<void> {
+    if (isFishwordHidden) return;
+    const response =
+      overlay.kind === "card-detail" && overlay.response
+        ? overlay.response
+        : review.kind === "card"
+          ? review.response
+          : null;
+    if (!response) {
+      ctx.ui.notify("当前没有可朗读的单词", "info");
+      return;
+    }
+    try {
+      await speech.speak({
+        text: response.card.term,
+        language: response.card.language,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      ctx.ui.notify(`无法朗读当前单词: ${message}`, "error");
     }
   }
 
@@ -455,6 +492,11 @@ export default function (pi: ExtensionAPI) {
       command: "fw-detail",
       description: "Show detailed card info (phonetics, meanings, examples)",
       handler: openCardDetail,
+    },
+    {
+      command: "fw-pronounce",
+      description: "Pronounce the current word using a language-matched system voice",
+      handler: pronounceCurrentCard,
     },
   ];
 
@@ -493,7 +535,7 @@ export default function (pi: ExtensionAPI) {
       ctx.ui.notify(
         [
           "Fishword 快捷键已更新",
-          "先按并松开 Ctrl+Q：F 隐藏/唤起 · I 详情 · A/H/G/E 评分",
+          "先按并松开 Ctrl+Q：F 隐藏/唤起 · I 详情 · P 朗读 · A/H/G/E 评分",
           "原 Ctrl+Shift 系列快捷键已移除。",
           `详情：${SHORTCUT_MIGRATION_ISSUE}`,
         ].join("\n"),
@@ -505,6 +547,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", () => {
+    speech.stop();
     detachPrefixShortcut?.();
     detachPrefixShortcut = undefined;
   });

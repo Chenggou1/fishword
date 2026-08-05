@@ -45,6 +45,7 @@ describe("card detail overlay", () => {
       onHandle: vi.fn(),
       onClose: vi.fn(),
       onRate: vi.fn(),
+      onPronounce: vi.fn(),
     });
 
     const lines = component!.render(80);
@@ -53,5 +54,44 @@ describe("card detail overlay", () => {
       expect(renderedText).toContain(word);
     }
     expect(lines.every((line) => visibleWidth(line) <= 62)).toBe(true);
+  });
+
+  it("pronounces the displayed card when P is pressed", () => {
+    let component: { handleInput(keyData: string): void } | undefined;
+    const custom = vi.fn((factory, options) => {
+      component = factory(
+        {},
+        { fg: (_style: string, text: string) => text },
+        {},
+        () => {},
+      );
+      options.onHandle({ unfocus() {} });
+      return new Promise(() => {});
+    });
+    const ctx = { ui: { custom } } as unknown as ExtensionContext;
+    const onPronounce = vi.fn();
+
+    showCardDetailOverlay(ctx, {
+      response: {
+        schema: "fishword.protocol.current.v1",
+        card: {
+          id: "repro:word",
+          term: "word",
+          language: "en",
+          meanings: [],
+          deck: { id: "repro", name: "Repro", db_id: 1 },
+          tags: [],
+        },
+        selection: { reason: "new" },
+      },
+      onHandle: vi.fn(),
+      onClose: vi.fn(),
+      onRate: vi.fn(),
+      onPronounce,
+    });
+
+    component!.handleInput("p");
+
+    expect(onPronounce).toHaveBeenCalledOnce();
   });
 });

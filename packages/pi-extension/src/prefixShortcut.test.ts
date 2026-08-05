@@ -14,6 +14,7 @@ describe("Fishword prefix shortcut", () => {
   it.each([
     ["f", "fw"],
     ["i", "fw-detail"],
+    ["p", "fw-pronounce"],
     ["a", "fw-again"],
     ["h", "fw-hard"],
     ["g", "fw-good"],
