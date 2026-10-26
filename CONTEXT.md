@@ -28,7 +28,7 @@ Supported capabilities:
 
 **Selection** — the process of choosing which card to show next within a deck, based on FSRS due dates, retrievability, and the daily new-card limit.
 
-**Daily new limit** — the maximum number of new (never-reviewed) cards introduced per deck per day. Default: 20.
+**Daily new limit** — the maximum number of new (never-reviewed) cards introduced per deck per day. Default: 20. Stored in `settings` under the `daily_new_limit` key and changed via `fishword deck daily-limit <n>` (or `/fw-limit` in the Pi extension), so users can raise it without rebuilding the CLI.
 
 **Catalog** — a remote index of pre-built decks downloadable via `fishword catalog fetch`. Fetched decks become independent local decks after import.
 

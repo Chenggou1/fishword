@@ -24,6 +24,7 @@ pub const CARD_LIST_SCHEMA: &str = "fishword.protocol.card_list.v1";
 pub const IMPORT_SCHEMA: &str = "fishword.protocol.import.v1";
 pub const CATALOG_LIST_SCHEMA: &str = "fishword.protocol.catalog_list.v1";
 pub const CATALOG_FETCH_SCHEMA: &str = "fishword.protocol.catalog_fetch.v1";
+pub const DAILY_LIMIT_SCHEMA: &str = "fishword.protocol.daily_limit.v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextFormat {
@@ -117,6 +118,15 @@ pub struct DeckDeletedFields {
 pub struct DeckRenameResponse {
     pub schema: &'static str,
     pub deck: DeckMutationFields,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DailyLimitResponse {
+    pub schema: &'static str,
+    /// Effective limit the selector will use for every deck.
+    pub daily_new_limit: i64,
+    /// Value used when the user never set the limit.
+    pub default_limit: i64,
 }
 
 #[derive(Debug, Clone, Serialize)]

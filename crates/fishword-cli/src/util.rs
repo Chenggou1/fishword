@@ -22,7 +22,7 @@ pub fn print_selected_card(
         .context("failed to read deck")?
         .context("Selected card deck disappeared")?;
     let progress = storage
-        .progress_counts_by_deck(deck.id, 20)
+        .progress_counts_by_deck(deck.id)
         .context("failed to read progress")?;
     let response = if current {
         CardResponse::current(selected, &deck, progress)

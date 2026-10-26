@@ -57,6 +57,12 @@ export type StatsResponse = {
   series: DailyStats[];
 };
 
+export type DailyLimitResponse = {
+  schema: "fishword.protocol.daily_limit.v1";
+  daily_new_limit: number;
+  default_limit: number;
+};
+
 export const RATINGS: Rating[] = ["again", "hard", "good", "easy"];
 
 export type CatalogDeckEntry = {

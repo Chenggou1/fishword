@@ -10,6 +10,7 @@
     { "$ref": "#/$defs/card_list_response" },
     { "$ref": "#/$defs/status_response" },
     { "$ref": "#/$defs/stats_response" },
+    { "$ref": "#/$defs/daily_limit_response" },
     { "$ref": "#/$defs/error_response" }
   ],
   "$defs": {
@@ -69,6 +70,16 @@
         "name": { "type": "string" },
         "description": { "type": ["string", "null"] },
         "message": { "type": "string" }
+      }
+    },
+    "daily_limit_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "daily_new_limit", "default_limit"],
+      "properties": {
+        "schema": { "const": "fishword.protocol.daily_limit.v1" },
+        "daily_new_limit": { "type": "integer", "minimum": 1 },
+        "default_limit": { "type": "integer", "minimum": 1 }
       }
     },
     "card_list_response": {

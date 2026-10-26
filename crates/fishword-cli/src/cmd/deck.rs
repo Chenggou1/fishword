@@ -1,12 +1,15 @@
 use anyhow::{Context, Result};
 use fishword_core::error::Error as CoreError;
 
+use fishword_core::storage::DEFAULT_DAILY_NEW_LIMIT;
+
 use crate::protocol::{
-    DeckCreateResponse, DeckDeleteResponse, DeckListResponse, DeckRenameResponse, DeckUseResponse,
+    DailyLimitResponse, DeckCreateResponse, DeckDeleteResponse, DeckListResponse,
+    DeckRenameResponse, DeckUseResponse, DAILY_LIMIT_SCHEMA,
 };
 
 use crate::{
-    args::DeckCmd,
+    args::{DailyLimitArgs, DeckCmd},
     util::{cmd_error, open_storage, print_human, print_json},
 };
 
@@ -22,6 +25,7 @@ pub fn cmd_deck(sub: DeckCmd) -> Result<()> {
         DeckCmd::Delete { id, json } => delete(id, json),
         DeckCmd::Rename { id, new_name, json } => rename(id, &new_name, json),
         DeckCmd::Current => current(),
+        DeckCmd::DailyLimit(args) => daily_limit(&args),
     }
 }
 
@@ -175,6 +179,40 @@ fn current() -> Result<()> {
             deck.description.as_deref().unwrap_or("")
         )),
         None => print_human("No decks found."),
+    }
+    Ok(())
+}
+
+fn daily_limit(args: &DailyLimitArgs) -> Result<()> {
+    let storage = open_storage()?;
+    if let Some(value) = args.value {
+        if value <= 0 {
+            return Err(cmd_error(
+                args.json,
+                "invalid_daily_limit",
+                &format!("Daily new limit must be positive, got {value}"),
+            ));
+        }
+        storage
+            .set_daily_new_limit(value)
+            .context("failed to save daily new limit")?;
+    }
+
+    let limit = storage
+        .daily_new_limit()
+        .context("failed to read daily new limit")?;
+    if args.json {
+        return print_json(DailyLimitResponse {
+            schema: DAILY_LIMIT_SCHEMA,
+            daily_new_limit: limit,
+            default_limit: DEFAULT_DAILY_NEW_LIMIT,
+        });
+    }
+    match args.value {
+        Some(value) => print_human(format!("Daily new limit set to {value}.")),
+        None => print_human(format!(
+            "Daily new limit: {limit} (default {DEFAULT_DAILY_NEW_LIMIT})"
+        )),
     }
     Ok(())
 }

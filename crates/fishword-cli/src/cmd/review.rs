@@ -54,7 +54,7 @@ pub fn cmd_status(args: &StatusArgs) -> Result<()> {
         return Ok(());
     };
     let progress = storage
-        .progress_counts_by_deck(deck.id, 20)
+        .progress_counts_by_deck(deck.id)
         .context("failed to read progress")?;
     let card_count = storage
         .card_count_by_deck(deck.id)

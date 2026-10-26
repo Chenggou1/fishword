@@ -12,6 +12,7 @@ Key details:
 - `import jsonl <path> --create-deck <name>` creates a new local deck and imports into it.
 - `catalog fetch` takes a catalog id such as `kajweb:cet4`, not a local deck id.
 - No standalone `next` command. Use `current` to show the current card; `rate` advances to the next.
+- `deck daily-limit` reads or writes the per-deck daily new-card limit (default 20). The value lives in `settings` so it can change without a rebuild.
 - Set `FISHWORD_CATALOG_URL` to override the catalog endpoint for offline testing.
 
 ## Directory Layout

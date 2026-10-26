@@ -6,6 +6,7 @@ import { importAndActivateCustomDeck, suggestDeckName } from "./customDeckImport
 import { seedDefaultDecks } from "./defaultDecks.ts";
 import { getErrorCode, isErrorResponse, parseCardResponse, runFishword } from "./fishword.ts";
 import { showCardDetailOverlay } from "./overlays/cardDetail.ts";
+import { promptDailyLimit } from "./overlays/dailyLimit.ts";
 import { showDeckManagerOverlay } from "./overlays/deckManager.ts";
 import { showStatsOverlay } from "./overlays/stats.ts";
 import { OverlayManager } from "./overlayManager.ts";
@@ -254,6 +255,18 @@ export default function (pi: ExtensionAPI) {
     });
   }
 
+  async function openDailyLimit(ctx: ExtensionContext): Promise<void> {
+    const result = await promptDailyLimit(ctx);
+    if (result.kind !== "changed") {
+      // Nothing changed; make sure the review widget is visible again after the
+      // overlay closed.
+      await refreshDisplay(ctx);
+      return;
+    }
+    ctx.ui.notify(`每日新词上限已设为 ${result.limit}`, "info");
+    await refreshDisplay(ctx);
+  }
+
   function openDeckManager(ctx: ExtensionContext): void {
     teardown();
     clearReviewWidget(ctx);
@@ -442,6 +455,11 @@ export default function (pi: ExtensionAPI) {
       handler: openStatsOverlay,
     },
     {
+      command: "fw-limit",
+      description: "Set the daily new-word limit",
+      handler: openDailyLimit,
+    },
+    {
       command: "fw",
       description: "Hide or summon review UI",
       handler: toggleFishwordVisibility,
@@ -507,6 +525,10 @@ export default function (pi: ExtensionAPI) {
   pi.on("session_shutdown", () => {
     detachPrefixShortcut?.();
     detachPrefixShortcut = undefined;
+    // The 60s done-widget refresh timer is only cleared when the review state
+    // changes. Left running, it fires after the session is torn down and touches
+    // a stale extension ctx, which crashes the process.
+    stopDoneRefreshTimer();
   });
 
   for (const action of fishwordActions) {

@@ -91,6 +91,21 @@ pub enum DeckCmd {
     },
     /// Show the active deck.
     Current,
+    /// Show or set how many new cards are introduced per deck per day.
+    DailyLimit(DailyLimitArgs),
+}
+
+#[derive(Parser)]
+pub struct DailyLimitArgs {
+    /// New limit for never-reviewed cards per deck per day. Omit to read the current value.
+    // Negative values are accepted by the parser so they reach validation and
+    // produce the stable `invalid_daily_limit` protocol error instead of a
+    // clap `unknown_argument` error.
+    #[arg(allow_negative_numbers = true)]
+    pub value: Option<i64>,
+    /// Emit stable JSON protocol output.
+    #[arg(long)]
+    pub json: bool,
 }
 
 #[derive(Subcommand)]
@@ -243,6 +258,7 @@ impl DeckCmd {
             | Self::Delete { json, .. }
             | Self::Rename { json, .. } => *json,
             Self::Current => false,
+            Self::DailyLimit(args) => args.json,
         }
     }
 }

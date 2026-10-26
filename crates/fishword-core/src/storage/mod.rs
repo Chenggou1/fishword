@@ -23,6 +23,12 @@ pub struct Storage {
     conn: Connection,
 }
 
+/// `settings` key holding the per-deck daily new-card limit.
+const DAILY_NEW_LIMIT_KEY: &str = "daily_new_limit";
+
+/// Historical default, used when the setting is absent.
+pub const DEFAULT_DAILY_NEW_LIMIT: i64 = 20;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProgressCounts {
     pub due_count: i64,
@@ -97,6 +103,32 @@ impl Storage {
 
     pub fn get_active_deck_id(&self) -> Result<Option<i64>> {
         get_active_deck_id_on(&self.conn)
+    }
+
+    /// Maximum number of never-reviewed cards introduced per deck per day.
+    ///
+    /// Stored in `settings` so users can raise it without rebuilding the CLI.
+    /// Falls back to [`DEFAULT_DAILY_NEW_LIMIT`] when unset, so existing
+    /// databases keep the historical behaviour.
+    pub fn daily_new_limit(&self) -> Result<i64> {
+        match self.get_setting(DAILY_NEW_LIMIT_KEY)? {
+            Some(value) => value.parse::<i64>().map_err(|error| {
+                Error::InvalidInput(format!("invalid {DAILY_NEW_LIMIT_KEY} '{value}': {error}"))
+            }),
+            None => Ok(DEFAULT_DAILY_NEW_LIMIT),
+        }
+    }
+
+    /// Persists a new daily new-card limit. Rejects non-positive values because a
+    /// limit of 0 would permanently disable new cards with no way to distinguish
+    /// it from a misconfiguration.
+    pub fn set_daily_new_limit(&self, limit: i64) -> Result<()> {
+        if limit <= 0 {
+            return Err(Error::InvalidInput(format!(
+                "{DAILY_NEW_LIMIT_KEY} must be a positive integer, got {limit}"
+            )));
+        }
+        set_setting_on(&self.conn, DAILY_NEW_LIMIT_KEY, &limit.to_string())
     }
 
     pub fn get_active_deck(&self) -> Result<Option<Deck>> {
@@ -517,23 +549,16 @@ impl Storage {
         Ok(count)
     }
 
-    pub fn progress_counts(&self, daily_new_limit: i64) -> Result<ProgressCounts> {
-        self.progress_counts_filtered(None, daily_new_limit)
+    pub fn progress_counts(&self) -> Result<ProgressCounts> {
+        self.progress_counts_filtered(None)
     }
 
-    pub fn progress_counts_by_deck(
-        &self,
-        deck_id: i64,
-        daily_new_limit: i64,
-    ) -> Result<ProgressCounts> {
-        self.progress_counts_filtered(Some(deck_id), daily_new_limit)
+    pub fn progress_counts_by_deck(&self, deck_id: i64) -> Result<ProgressCounts> {
+        self.progress_counts_filtered(Some(deck_id))
     }
 
-    fn progress_counts_filtered(
-        &self,
-        deck_id: Option<i64>,
-        daily_new_limit: i64,
-    ) -> Result<ProgressCounts> {
+    fn progress_counts_filtered(&self, deck_id: Option<i64>) -> Result<ProgressCounts> {
+        let daily_new_limit = self.daily_new_limit()?;
         let due_count = self.conn.query_row(
             "SELECT COUNT(*)
              FROM card_state s
@@ -575,7 +600,10 @@ impl Storage {
             params![deck_id],
             |row| row.get::<_, i64>(0),
         )?;
-        let new_quota_remaining = daily_new_limit.saturating_sub(new_reviewed_today);
+        // Clamp at 0: lowering the limit after new cards were already introduced
+        // must not yield a negative quota, which would become a huge `usize`
+        // downstream and silently disable the limit.
+        let new_quota_remaining = (daily_new_limit - new_reviewed_today).max(0);
         Ok(ProgressCounts {
             due_count,
             new_remaining: new_quota_remaining.min(new_count),
@@ -1389,8 +1417,8 @@ mod tests {
             .insert_card(second_deck.id, "same", &[], &[])
             .unwrap();
 
-        let first_progress = storage.progress_counts_by_deck(first_deck.id, 20).unwrap();
-        let second_progress = storage.progress_counts_by_deck(second_deck.id, 20).unwrap();
+        let first_progress = storage.progress_counts_by_deck(first_deck.id).unwrap();
+        let second_progress = storage.progress_counts_by_deck(second_deck.id).unwrap();
 
         assert_eq!(first_progress.new_remaining, 1);
         assert_eq!(second_progress.new_remaining, 1);
@@ -1399,19 +1427,65 @@ mod tests {
     #[test]
     fn test_progress_counts_subtract_new_cards_reviewed_today() {
         let storage = open_temp();
+        storage.set_daily_new_limit(2).unwrap();
         let deck = storage.insert_deck("test", None).unwrap();
         let first = storage.insert_card(deck.id, "first", &[], &[]).unwrap();
         storage.insert_card(deck.id, "second", &[], &[]).unwrap();
         storage.insert_card(deck.id, "third", &[], &[]).unwrap();
 
-        let before = storage.progress_counts_by_deck(deck.id, 2).unwrap();
+        let before = storage.progress_counts_by_deck(deck.id).unwrap();
         assert_eq!(before.new_remaining, 2);
 
         Scheduler::review(&storage, first.id, Rating::Easy).unwrap();
 
-        let after = storage.progress_counts_by_deck(deck.id, 2).unwrap();
+        let after = storage.progress_counts_by_deck(deck.id).unwrap();
         assert_eq!(after.new_remaining, 1);
         assert_eq!(after.reviewed_today, 1);
+    }
+
+    #[test]
+    fn test_daily_new_limit_defaults_when_unset() {
+        let storage = open_temp();
+        assert_eq!(storage.daily_new_limit().unwrap(), DEFAULT_DAILY_NEW_LIMIT);
+    }
+
+    #[test]
+    fn test_daily_new_limit_round_trips_through_settings() {
+        let storage = open_temp();
+        storage.set_daily_new_limit(80).unwrap();
+        assert_eq!(storage.daily_new_limit().unwrap(), 80);
+    }
+
+    #[test]
+    fn test_daily_new_limit_rejects_non_positive_values() {
+        let storage = open_temp();
+        assert!(storage.set_daily_new_limit(0).is_err());
+        assert!(storage.set_daily_new_limit(-5).is_err());
+        assert_eq!(storage.daily_new_limit().unwrap(), DEFAULT_DAILY_NEW_LIMIT);
+    }
+
+    #[test]
+    fn test_daily_new_limit_rejects_corrupted_setting() {
+        let storage = open_temp();
+        set_setting_on(&storage.conn, DAILY_NEW_LIMIT_KEY, "many").unwrap();
+        assert!(storage.daily_new_limit().is_err());
+    }
+
+    #[test]
+    fn test_reviewing_more_than_the_limit_does_not_produce_a_negative_quota() {
+        let storage = open_temp();
+        storage.set_daily_new_limit(2).unwrap();
+        let deck = storage.insert_deck("test", None).unwrap();
+        for word in ["first", "second", "third"] {
+            let card = storage.insert_card(deck.id, word, &[], &[]).unwrap();
+            Scheduler::review(&storage, card.id, Rating::Easy).unwrap();
+        }
+
+        // Lowering the limit below today's already-introduced count must clamp at
+        // zero instead of wrapping into a huge unsigned value downstream.
+        let progress = storage.progress_counts_by_deck(deck.id).unwrap();
+        assert_eq!(progress.new_remaining, 0);
+        assert_eq!(progress.new_reviewed_today, 3);
     }
 
     #[test]

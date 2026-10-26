@@ -75,6 +75,17 @@ pi install npm:@fishword/pi-extension
 
 输入 `/fw-stats` 查看今日完成量、学习新词数和 7 日学习趋势。
 
+### 每日新词上限
+
+默认每个词库每天引入 20 个新词。需要加快进度时，输入 `/fw-limit` 输入新的上限（例如 `60`）即可，改动立即生效，无需重启 Pi。也可以用 CLI 设置：
+
+```bash
+fishword deck daily-limit        # 查看当前上限
+fishword deck daily-limit 60     # 设为每天 60 个新词
+```
+
+上限存在本地 SQLite 的 `settings` 表里，对所有词库统一生效，各词库的配额仍是独立计算的。
+
 ### 词库管理
 
 输入 `/fw-manage` 打开词库管理器，内含两个页面（左右箭头切换）：

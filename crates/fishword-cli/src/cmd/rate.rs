@@ -61,7 +61,7 @@ pub fn cmd_rate(args: &RateArgs) -> Result<()> {
     };
     if args.json {
         let progress = storage
-            .progress_counts_by_deck(scope_deck.id, 20)
+            .progress_counts_by_deck(scope_deck.id)
             .context("failed to read progress")?;
         let next_ref = next.as_ref().zip(next_deck.as_ref());
         print_json(RateResponse::new(

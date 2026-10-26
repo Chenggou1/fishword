@@ -60,6 +60,15 @@ try {
   // deck use now takes id
   run(["deck", "use", String(deckId)]);
 
+  const defaultLimit = run(["deck", "daily-limit", "--json"], { json: true });
+  if (defaultLimit.daily_new_limit !== 20) {
+    throw new Error(`unexpected default daily limit: ${JSON.stringify(defaultLimit)}`);
+  }
+  const raisedLimit = run(["deck", "daily-limit", "50", "--json"], { json: true });
+  if (raisedLimit.daily_new_limit !== 50) {
+    throw new Error(`deck daily-limit did not persist: ${JSON.stringify(raisedLimit)}`);
+  }
+
   const current = run(["current", "--json"], { json: true });
   if (!current.card?.term) {
     throw new Error("current --json did not return a card term");

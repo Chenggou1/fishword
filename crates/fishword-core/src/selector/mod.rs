@@ -20,8 +20,6 @@ pub struct SelectedCard {
     pub reason: SelectionReason,
 }
 
-const DEFAULT_DAILY_NEW_LIMIT: i64 = 20;
-
 /// Returns the current card for the given deck, or selects the next one if none is set.
 pub fn select_current(storage: &Storage, deck_id: i64) -> Result<Option<SelectedCard>> {
     if let Some(card) = storage.get_current_card_in_deck(deck_id)? {
@@ -36,7 +34,7 @@ pub fn select_current(storage: &Storage, deck_id: i64) -> Result<Option<Selected
 
 /// Selects the next card for the given deck and updates the current-card pointer.
 pub fn select_next(storage: &Storage, deck_id: i64) -> Result<Option<SelectedCard>> {
-    let progress = storage.progress_counts_by_deck(deck_id, DEFAULT_DAILY_NEW_LIMIT)?;
+    let progress = storage.progress_counts_by_deck(deck_id)?;
     let daily_new_limit = progress.new_remaining as usize;
     let current_card_id = storage
         .get_current_card_in_deck(deck_id)?
